@@ -119,7 +119,7 @@ viewTable(topRegulators, options = list(pageLength = 10))
 
 # regulon specificity 
 rss <- calcRSS(AUC=getAUC(regulonsAUC), cellAnnotation=Cell_type[colnames(regulonsAUC), selectedResolution])
-write.csv(rss, file = "20241007_Rss.csv")
+write.csv(rss, file = "regulon_specificity.csv")
 
 # regulon activity density plot 
 cat(names(embeddings), sep="\n")
@@ -128,105 +128,6 @@ dens2d <- bkde2D(selectedEmbedding, .3)$fhat
 image(dens2d, col=brewer.pal(9, "YlOrBr"), axes=TRUE)
 contour(dens2d, add=TRUE, nlevels=5, drawlabels=FALSE)
 
-# FUNCTION binarizeAUC 
-binarizeAUC <- function(auc, thresholds)
-{
-  thresholds <- thresholds[intersect(names(thresholds), rownames(auc))]
-  regulonsCells <- setNames(lapply(names(thresholds), 
-                                   function(x) {
-                                     trh <- thresholds[x]
-                                     names(which(getAUC(auc)[x,]>trh))
-                                   }),names(thresholds))
-  
-  regulonActivity <- reshape2::melt(regulonsCells)
-  binaryRegulonActivity <- t(table(regulonActivity[,1], regulonActivity[,2]))
-  class(binaryRegulonActivity) <- "matrix"  
-  
-  return(binaryRegulonActivity)
-}
-
-# binary auc
-regulonAucThresholds_fixed <- setNames(as.numeric(names(regulonAucThresholds)), regulonAucThresholds)
-binaryRegulonActivity <- binarizeAUC(regulonsAUC, regulonAucThresholds_fixed)
-dim(binaryRegulonActivity)
-
-# plot selected cell types and genes 
-set.seed(123)
-unique(Cell_type$Cell.type)
-selected_types <- c("CD-PC", "CD-IC", "DCT", "TAL/DCT", "TAL", "TL", "CNT", "PT", "Podocytes")
-Cell_type$Cell.type <- factor(Cell_type$Cell.type, levels = selected_types)
-column_order <- order(Cell_type$Cell.type)
-ordered_cell_types <- Cell_type$Cell.type[column_order]
-filtered_factor <- factor(Cell_type$Cell.type, levels = selected_types)
-
-n_levels <- length(levels(filtered_factor))
-
-if (n_levels <= 8) {
-  colors <- brewer.pal(n_levels, "Set3")
-} else {
-  base_colors <- brewer.pal(8, "Set3")
-  colors <- colorRampPalette(base_colors)(n_levels)
-}
-
-cell_type_color_lut <- setNames(colors, levels(filtered_factor))
-col_ann <- HeatmapAnnotation(df = data.frame(
-  CellType = ordered_cell_types
-), col = list(CellType = cell_type_color_lut))
-
-
-selected_genes <- c("Atf4(+)", "Ddit3(+)", "Ehf(+)", "Elf3(+)", "Fosl2(+)", "Grhl2(+)", "Hdac2(+)", "Hif1a(+)", "Hoxb2(+)", "Hoxb6(+)",
-                    "Hoxb7(+)", "Ilf2(+)", "Junb(+)", "Jund(+)", "Klf5(+)", "Nfe2l1(+)", "Nfyb(+)", "Pole4(+)", "Prdx5(+)", "Rad21(+)", 
-                    "Smarca5(+)", "Trim28(+)", "Xbp1(+)", "Ybx1(+)", "Yy1(+)")
-filtered_binaryRegulonActivity <- binaryRegulonActivity[selected_genes, , drop = FALSE]
-filtered_binaryRegulonActivity <- filtered_binaryRegulonActivity[, column_order, drop = FALSE]
-dim(filtered_binaryRegulonActivity)
-
-# generate heatmap 
-
-Heatmap(filtered_binaryRegulonActivity, name = "Binarized activity", col = c("0" = "white", "1" = "black"),
-        top_annotation = col_ann, cluster_rows = TRUE, cluster_columns = TRUE,
-        show_row_names = TRUE, show_column_names = FALSE)
-
-
-# seperate gene expression and regulon activuty plot
-
-cat(names(embeddings), sep="\n")
-selectedEmbedding <- embeddings[["umap"]]
-
-
-tfsToPlot <- c("Ddit3", "Atf4", "Klf5", "Junb","Nfyb","Trim28", "Yy1", "Hif1a", "Smarca5",
-               "Prdx5", "Hdac2", "Ilf2", "Hoxb2", "Hoxb6", "Hoxb7", "Grhl2", "Fosl2", "Xbp1", "Jund",
-               "Ehf", "Elf3", "Rad21", "Pole4", "Nfe2l1", "Ybx1")
-regulonsToPlot <- unlist(lapply(tfsToPlot, function(x) {
-  grep(paste0("^", x, "\\("), rownames(regulonsAUC), value = TRUE)
-}))
-
-options(repr.plot.width=10, repr.plot.height=8) 
-
-pdf("20241126_AUCell_expression_plot.pdf", width = 4, height = 4)
-AUCell::AUCell_plotTSNE(selectedEmbedding,exprMat_log[tfsToPlot, ],
-                        plots = c("Expression"),
-                        cex = 0.3, 
-                        exprCols = c("grey90","red4"),  
-                        alphaOff = 0.2,  
-                        alphaOn = 1,
-                        offColor="lightgray",
-                        borderColor = adjustcolor("lightgray", alpha.f = 0)
-)
-dev.off()   
-
-pdf("20241126_AUCell_binary_regulon_plot.pdf", width = 4, height = 4)  
-AUCell::AUCell_plotTSNE(selectedEmbedding,exprMat_log,regulonsAUC[regulonsToPlot],
-                        plots = c("binaryAUC"),
-                        thresholds = regulonAucThresholds[regulonsToPlot],
-                        cex = 0.3, 
-                        exprCols = c("gray90", "blue", "navyblue"),  
-                        alphaOff = 0.2,  
-                        alphaOn = 1,
-                        offColor="lightgray",
-                        borderColor = adjustcolor("lightgray", alpha.f = 0)
-)
-dev.off() 
 
 ─ Session info ────────────────────────────────────────────────────────────────────────────────────────────
  setting  value
