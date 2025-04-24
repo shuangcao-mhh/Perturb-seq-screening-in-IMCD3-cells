@@ -1,3 +1,8 @@
+library(clusterProfiler)
+library(KEGGREST)
+library(dplyr)
+library(stringr)
+
 # Ilf2  read data  and transform the gene ID 
 ilf2 <- read.csv("Pseudo_Ilf2.csv")
 colnames(ilf2)[1] <- "gene_symbol"
