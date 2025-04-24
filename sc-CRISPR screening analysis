@@ -22,7 +22,7 @@ dim(seurat_object)
 seurat_object[['crispr']] = CreateAssayObject(counts = data$`CRISPR Guide Capture`)
 
 #add metadata from csv 
-crispr_data <- read.csv("/project/ag-schmidt-ott/Shuang/2023_CRISPR_25TF_library_sc_screening/135gRNAs_Protospacer Per Tag.csv")
+crispr_data <- read.csv("/project/2023_CRISPR_25TF_library_sc_screening/135gRNAs_Protospacer Per Tag.csv")
 head(crispr_data)
 
 ### add meta data to the seurat object 
@@ -204,6 +204,80 @@ MixscapeHeatmap(object = sub_cluster,
                 pval.cutoff = 0.05,
                 angle = 0, 
                 size=6.5) + theme(axis.text.y = element_text(size = 16))
+#########################################################################################
+library(ExperimentHub)
+library(DESeq2)
+library(tidyverse)
+library(openxlsx)
+view(seurat_object@meta.data)
+cell_plot <- DimPlot(seurat_object, reduction = 'umap', group.by = 'sgRNA')
+cond_plot <- DimPlot(seurat_object, reduction = 'umap', group.by = 'Crispr')
+cell_plot|cond_plot
+DefaultAssay(seurat_object)
+
+AggregateExpression
+
+cts <- AggregateExpression(sub_cluster, 
+                           group.by = c("sgRNA", "Crispr"),
+                           assays = 'RNA',
+                           slot = "data",
+                           return.seurat = FALSE)
+
+cts <- cts$RNA
+cts.t <- t(cts)
+cts.t[1:6, 1:6]
+cts.t <- as.data.frame(cts.t)
+splitRows <- gsub('_.*', '', rownames(cts.t))
+splitRows <- gsub('_Perturbed', '', rownames(cts.t))
+
+cts.split <- split.data.frame(cts.t,
+                              f = factor(splitRows))
+
+cts.split.modified <- lapply(cts.split, function(x){
+  rownames(x) <- gsub('.*_(.*)', '\\1', rownames(x))
+  t(x)
+  
+})
+
+# extract counts data 
+counts_Yy1 <- as.data.frame(cbind(cts.split.modified$Yy1.g1, cts.split.modified$Yy1.g2, cts.split.modified$Yy1.g3, cts.split.modified$Yy1.g4,
+cts.split.modified$Yy1.g5, cts.split.modified$`Non-Targeting.g1_NT`, cts.split.modified$`Non-Targeting.g2_NT`,
+cts.split.modified$`Non-Targeting.g3_NT`, cts.split.modified$`Non-Targeting.g4_NT`, cts.split.modified$`Non-Targeting.g5_NT`,
+cts.split.modified$`Non-Targeting.g6_NT`, cts.split.modified$`Non-Targeting.g7_NT`, cts.split.modified$`Non-Targeting.g8_NT`,
+cts.split.modified$`Non-Targeting.g9_NT`, cts.split.modified$`Non-Targeting.g10_NT`))
+
+counts_Yy1$Gene <- rownames(counts_Yy1)
+rownames(counts_Yy1) <- NULL    
+write.xlsx(counts_Yy1, file = "Normalized_Yy1_counts.xlsx")
+
+# prepare data for DESeq2
+colData <- data.frame(samples = colnames(counts_Klf5))
+condition <- c(rep("KD", 5), rep("Ctrl", 10))
+colData <- colData %>%
+  mutate(condition = condition)
+
+dds <- DESeqDataSetFromMatrix(countData = counts_Yy1,
+                              colData = colData,
+                              design = ~ condition
+)
+
+class(counts_Yy1)
+summary(as.vector(counts_Yy1))
+
+# filter
+keep <- rowSums(counts(dds)) >=10
+dds <- dds[keep,]
+# run DESeq2
+dds <- DESeq(dds)
+
+# Check the coefficients for the comparison
+resultsNames(dds)
+
+# Generate results object
+res <- results(dds, name = "condition_KD_vs_Ctrl")
+res
+
+write.csv(res_df, file = "Pseudo_Yy1.csv", row.names = TRUE)
 
 -------------------------------------------------------------------------------------------------------------------------------------------
 > sessionInfo()
