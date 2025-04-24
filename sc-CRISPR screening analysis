@@ -279,6 +279,8 @@ res
 
 write.csv(res_df, file = "Pseudo_Yy1.csv", row.names = TRUE)
 
+# normalize expression according to size factor 
+write.csv(as.data.frame(counts(dds, normalized = TRUE)), file = "deseq2_normalized_counts_Yy1.csv")
 -------------------------------------------------------------------------------------------------------------------------------------------
 > sessionInfo()
 R version 4.4.2 (2024-10-31)
