@@ -1,0 +1,1069 @@
+# Ilf2  read data  and transform the gene ID 
+ilf2 <- read.csv("Pseudo_Ilf2.csv")
+colnames(ilf2)[1] <- "gene_symbol"
+
+ilf2$ENTREZID <- mapIds(org.Mm.eg.db,
+                        keys = ilf2$gene_symbol,
+                        keytype = "SYMBOL",
+                        column = "ENTREZID",
+                        multiVals = "first")
+
+ilf2 <- ilf2 %>% filter(!is.na(ENTREZID))
+
+deg_up <- ilf2 %>% filter(log2FoldChange > 0 & padj < 0.05)
+deg_down <- ilf2 %>% filter(log2FoldChange < 0 & padj < 0.05)
+
+genes_up <- deg_up$ENTREZID
+genes_down <- deg_down$ENTREZID
+background_genes <- ilf2$ENTREZID
+
+# custom KEGG terms construct 
+mmu_ids <- c(
+  "mmu00010", "mmu00020", "mmu00030", "mmu00040", "mmu00051", "mmu00052", "mmu00053", "mmu00500", "mmu00620",
+  "mmu00630", "mmu00640", "mmu00650", "mmu00562",
+  "mmu00190", "mmu00910", "mmu00920",
+  "mmu00061", "mmu00062", "mmu00071", "mmu00100", "mmu00120", "mmu00140", "mmu00561", "mmu00564", "mmu00565",
+  "mmu00600", "mmu00590", "mmu00591", "mmu00592", "mmu01040",
+  "mmu00230", "mmu00240",
+  "mmu00250", "mmu00260", "mmu00270", "mmu00280", "mmu00290", "mmu00310", "mmu00220", "mmu00330", "mmu00340",
+  "mmu00350", "mmu00360", "mmu00380", "mmu00400",
+  "mmu00410", "mmu00430", "mmu00440", "mmu00450", "mmu00470", "mmu00480",
+  "mmu00520", "mmu00541", "mmu00510", "mmu00513", "mmu00512", "mmu00515", "mmu00514", "mmu00532", "mmu00534",
+  "mmu00533", "mmu00531", "mmu00563", "mmu00601", "mmu00603", "mmu00604", "mmu00511",
+  "mmu00730", "mmu00740", "mmu00750", "mmu00760", "mmu00770", "mmu00780", "mmu00785", "mmu00790", "mmu00670",
+  "mmu00830", "mmu00860", "mmu00130",
+  "mmu03020", "mmu03022", "mmu03040",
+  "mmu03010", "mmu00970", "mmu03013", "mmu03015", "mmu03008",
+  "mmu03060", "mmu04141", "mmu04130", "mmu04120", "mmu04122", "mmu03050", "mmu03018",
+  "mmu03030", "mmu03410", "mmu03420", "mmu03430", "mmu03440", "mmu03450", "mmu03460",
+  "mmu03082", "mmu03083", 
+  "mmu04010", "mmu04012", "mmu04014", "mmu04015", "mmu04310", "mmu04330", "mmu04340", "mmu04350",
+  "mmu04390", "mmu04392", "mmu04370", "mmu04371", "mmu04630", "mmu04064", "mmu04668", "mmu04066",
+  "mmu04068", "mmu04020", "mmu04070", "mmu04072", "mmu04071", "mmu04024", "mmu04022", "mmu04151",
+  "mmu04152", "mmu04150",
+  "mmu04080", "mmu04081", "mmu04060", "mmu04061", "mmu04512", "mmu04514", 
+  "mmu04144", "mmu04145", "mmu04142", "mmu04146", "mmu04140", "mmu04136", "mmu04137", "mmu04148",
+  "mmu04110", "mmu04114", "mmu04210", "mmu04215", "mmu04216", "mmu04217", "mmu04115", "mmu04218",
+  "mmu04510", "mmu04520", "mmu04530", "mmu04540", "mmu04550",
+  "mmu04814", "mmu04820", "mmu04810"
+)
+
+
+term2gene_list <- list()
+term2name_list <- list()
+for (pid in mmu_ids) {
+  cat("Fetching", pid, "...\n")
+  tryCatch({
+    entry <- keggGet(pid)[[1]]
+    if (!is.null(entry$GENE)) {
+      genes <- entry$GENE
+      entrez_ids <- genes[seq(1, length(genes), 2)]
+      df <- data.frame(term = pid, gene = entrez_ids)
+      term2gene_list[[pid]] <- df
+    }
+    term2name_list[[pid]] <- data.frame(term = pid, name = entry$NAME[1])
+  }, error = function(e) {
+    cat("❌ Failed:", pid, "\n")
+  })
+}
+
+term2gene_df <- bind_rows(term2gene_list)
+term2name_df <- bind_rows(term2name_list)
+
+# KEGG analysis
+
+ilf2_kegg_up <- enricher(
+  gene = genes_up,
+  TERM2GENE = term2gene_df,
+  TERM2NAME = term2name_df,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  minGSSize = 5,
+  universe = background_genes,
+)
+
+ilf2_kegg_down <- enricher(
+  gene = genes_down,
+  TERM2GENE = term2gene_df,
+  TERM2NAME = term2name_df,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  universe = background_genes,
+)
+
+# GO all analysis 
+ifl2_go_up <- enrichGO(gene = genes_up,
+                   OrgDb = org.Mm.eg.db,
+                   keyType = "ENTREZID",
+                   ont = "ALL",
+                   universe = background_genes,
+                   pAdjustMethod = "BH",
+                   qvalueCutoff = 0.05)
+
+
+ifl2_go_down <- enrichGO(gene = genes_down,
+                          OrgDb = org.Mm.eg.db,
+                          keyType = "ENTREZID",
+                          ont = "ALL",
+                          universe = background_genes,
+                          pAdjustMethod = "BH",
+                          qvalueCutoff = 0.05)
+
+
+# visulization 
+devtools::install_github("dxsbiocc/gground")
+BiocManager::install("ggprism")
+library(gground)
+library(ggprism)
+library(tidyverse)
+library(org.Mm.eg.db)
+library(clusterProfiler)
+
+# color panel 
+pal <- c('#eaa052', '#b74147', '#90ad5b', '#23929c')
+
+
+
+# Transform GO KEGG results geneID to gene name
+go_ilf2_up_table <- setReadable(ifl2_go_up, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+GO_up_ilf2 <- as.data.frame(go_ilf2_up_table)
+GO_up_ilf2_filtered <- GO_up_ilf2 %>%
+  filter(!grepl("synapse|postsynapse|presynapse|neuronal|axon|dendrite|neuron", Description, ignore.case = TRUE))
+
+kegg_ilf2_up_table <- setReadable(ilf2_kegg_up, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+KEGG_up_ilf2 <- as.data.frame(kegg_ilf2_up_table)
+
+# select GO top 5 from 3 types 
+use_pathway <- group_by(GO_up_ilf2_filtered, ONTOLOGY) %>%
+  top_n(5, wt = -p.adjust) %>%
+  group_by(p.adjust) %>%
+  top_n(1, wt = Count) %>%
+  rbind(
+    top_n(KEGG_up_ilf2, 5, -p.adjust) %>%
+      group_by(p.adjust) %>%
+      top_n(1, wt = Count) %>%
+      mutate(ONTOLOGY = 'KEGG')
+  ) %>%
+  ungroup() %>%
+  mutate(ONTOLOGY = factor(ONTOLOGY, 
+                           levels = rev(c('BP', 'CC', 'MF', 'KEGG')))) %>%
+  dplyr::arrange(ONTOLOGY, p.adjust) %>%
+  mutate(Description = factor(Description, levels = Description)) %>%
+  tibble::rowid_to_column('index')
+
+width <- 0.5
+xaxis_max <- max(-log10(use_pathway$p.adjust)) + 1
+rect.data <- group_by(use_pathway, ONTOLOGY) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(
+    xmin = -3 * width,
+    xmax = -2 * width,
+    ymax = cumsum(n),
+    ymin = lag(ymax, default = 0) + 0.6,
+    ymax = ymax + 0.4
+  )
+
+
+# Plot 
+plot_enrichment <- function() {
+  
+  baseline <- data.frame(x = 0, y = 0, xend = xaxis_max, yend = 0)
+  
+  p <- use_pathway %>%
+    ggplot(aes(-log10(p.adjust), y = index, fill = ONTOLOGY)) +
+     geom_round_col(
+      aes(y = Description), width = 0.6, alpha = 0.8
+    ) +
+     geom_text(
+      aes(x = 0.05, label = Description),
+      hjust = 0, size = 5
+    ) +
+    geom_text(
+      aes(x = 0.1, label = geneID, colour = ONTOLOGY),
+      hjust = 0, vjust = 2.6, size = 3.5, fontface = 'italic',
+      show.legend = FALSE
+    ) +
+    
+ 
+    geom_point(
+      aes(x = -width, size = Count),
+      shape = 21
+    ) +
+    geom_text(
+      aes(x = -width, label = Count)
+    ) +
+    scale_size_continuous(name = 'Count', range = c(5, 12)) +
+    
+
+    geom_round_rect(
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
+          fill = ONTOLOGY),
+      data = rect.data,
+      radius = unit(2, 'mm'),
+      inherit.aes = FALSE
+    ) +
+    
+
+    geom_text(
+      aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2, label = ONTOLOGY),
+      data = rect.data,
+      inherit.aes = FALSE
+    ) +
+    
+ 
+    geom_segment(
+      data = baseline,
+      aes(x = x, y = y, xend = xend, yend = yend),
+      linewidth = 1.5,
+      inherit.aes = FALSE
+    ) +
+    
+    labs(y = NULL) +
+    scale_fill_manual(name = 'Category', values = pal) +
+    scale_colour_manual(values = pal) +
+    scale_x_continuous(
+      breaks = seq(0, xaxis_max, 2),
+      expand = expansion(c(0, 0))
+    ) +
+    theme_prism() +
+    theme(
+      axis.text.y = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.title = element_text()
+    )
+  
+  return(p)
+}
+
+enrichment_plot <- plot_enrichment()
+print(enrichment_plot)
+
+################################################################################
+# Transform GO KEGG results geneID to gene name
+go_ilf2_down_table <- setReadable(ifl2_go_down, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+GO_down_ilf2 <- as.data.frame(go_ilf2_down_table)
+GO_down_ilf2_filtered <- GO_down_ilf2 %>%
+  filter(!grepl("synapse|postsynapse|presynapse|neuronal|axon|dendrite|neuron", Description, ignore.case = TRUE))
+
+kegg_ilf2_down_table <- setReadable(ilf2_kegg_down, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+KEGG_down_ilf2 <- as.data.frame(kegg_ilf2_down_table)
+
+# select GO top 5 from 3 types 
+
+use_pathway <- group_by(GO_down_ilf2_filtered, ONTOLOGY) %>%
+  top_n(5, wt = -p.adjust) %>%
+  group_by(p.adjust) %>%
+  top_n(1, wt = Count) %>%
+  rbind(
+    top_n(KEGG_down_ilf2, 5, -p.adjust) %>%
+      group_by(p.adjust) %>%
+      top_n(1, wt = Count) %>%
+      mutate(ONTOLOGY = 'KEGG')
+  ) %>%
+  ungroup() %>%
+  mutate(ONTOLOGY = factor(ONTOLOGY, 
+                           levels = rev(c('BP', 'CC', 'MF', 'KEGG')))) %>%
+  dplyr::arrange(ONTOLOGY, p.adjust) %>%
+  mutate(Description = factor(Description, levels = Description)) %>%
+  tibble::rowid_to_column('index')
+
+width <- 0.5
+xaxis_max <- max(-log10(use_pathway$p.adjust)) + 1
+rect.data <- group_by(use_pathway, ONTOLOGY) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(
+    xmin = -3 * width,
+    xmax = -2 * width,
+    ymax = cumsum(n),
+    ymin = lag(ymax, default = 0) + 0.6,
+    ymax = ymax + 0.4
+  )
+
+
+# Plot 
+plot_enrichment <- function() {
+  
+  baseline <- data.frame(x = 0, y = 0, xend = xaxis_max, yend = 0)
+  
+  p <- use_pathway %>%
+    ggplot(aes(-log10(p.adjust), y = index, fill = ONTOLOGY)) +
+    geom_round_col(
+      aes(y = Description), width = 0.6, alpha = 0.8
+    ) +
+    geom_text(
+      aes(x = 0.05, label = Description),
+      hjust = 0, size = 5
+    ) +
+    geom_text(
+      aes(x = 0.1, label = geneID, colour = ONTOLOGY),
+      hjust = 0, vjust = 2.6, size = 3.5, fontface = 'italic',
+      show.legend = FALSE
+    ) +
+    
+    
+    geom_point(
+      aes(x = -width, size = Count),
+      shape = 21
+    ) +
+    geom_text(
+      aes(x = -width, label = Count)
+    ) +
+    scale_size_continuous(name = 'Count', range = c(5, 12)) +
+    
+    
+    geom_round_rect(
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
+          fill = ONTOLOGY),
+      data = rect.data,
+      radius = unit(2, 'mm'),
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_text(
+      aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2, label = ONTOLOGY),
+      data = rect.data,
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_segment(
+      data = baseline,
+      aes(x = x, y = y, xend = xend, yend = yend),
+      linewidth = 1.5,
+      inherit.aes = FALSE
+    ) +
+    
+    labs(y = NULL) +
+    scale_fill_manual(name = 'Category', values = pal) +
+    scale_colour_manual(values = pal) +
+    scale_x_continuous(
+      breaks = seq(0, xaxis_max, 2),
+      expand = expansion(c(0, 0))
+    ) +
+    theme_prism() +
+    theme(
+      axis.text.y = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.title = element_text()
+    )
+  
+  return(p)
+}
+
+enrichment_plot <- plot_enrichment()
+print(enrichment_plot)
+
+# delete objects in the environment
+all_objects <- ls()
+objects_to_remove <- setdiff(all_objects, c("term2gene_df", "term2name_df"))
+rm(list = objects_to_remove)
+rm(all_objects, objects_to_remove)
+
+
+############# junb  read data  and transform the gene ID 
+junb <- read.csv("Pseudo_Junb.csv")
+colnames(junb)[1] <- "gene_symbol"
+
+junb$ENTREZID <- mapIds(org.Mm.eg.db,
+                        keys = junb$gene_symbol,
+                        keytype = "SYMBOL",
+                        column = "ENTREZID",
+                        multiVals = "first")
+
+junb <- junb %>% filter(!is.na(ENTREZID))
+
+deg_up <- junb %>% filter(log2FoldChange > 0 & padj < 0.05)
+deg_down <- junb %>% filter(log2FoldChange < 0 & padj < 0.05)
+
+genes_up <- deg_up$ENTREZID
+genes_down <- deg_down$ENTREZID
+background_genes <- junb$ENTREZID
+
+
+# KEGG analysis
+
+junb_kegg_up <- enricher(
+  gene = genes_up,
+  TERM2GENE = term2gene_df,
+  TERM2NAME = term2name_df,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  minGSSize = 5,
+  universe = background_genes,
+)
+
+junb_kegg_down <- enricher(
+  gene = genes_down,
+  TERM2GENE = term2gene_df,
+  TERM2NAME = term2name_df,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  universe = background_genes,
+)
+
+# GO all analysis 
+junb_go_up <- enrichGO(gene = genes_up,
+                       OrgDb = org.Mm.eg.db,
+                       keyType = "ENTREZID",
+                       ont = "ALL",
+                       universe = background_genes,
+                       pAdjustMethod = "BH",
+                       qvalueCutoff = 0.05)
+
+
+junb_go_down <- enrichGO(gene = genes_down,
+                         OrgDb = org.Mm.eg.db,
+                         keyType = "ENTREZID",
+                         ont = "ALL",
+                         universe = background_genes,
+                         pAdjustMethod = "BH",
+                         qvalueCutoff = 0.05)
+
+
+# visulization 
+devtools::install_github("dxsbiocc/gground")
+BiocManager::install("ggprism")
+library(gground)
+library(ggprism)
+library(tidyverse)
+library(org.Mm.eg.db)
+library(clusterProfiler)
+
+# color panel 
+pal <- c('#eaa052', '#b74147', '#90ad5b', '#23929c')
+
+
+
+# Transform GO KEGG results geneID to gene name
+go_junb_up_table <- setReadable(junb_go_up, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+GO_up_junb <- as.data.frame(go_junb_up_table)
+GO_up_junb_filtered <- GO_up_junb %>%
+  filter(!grepl("synapse|postsynapse|presynapse|neuronal|axon|dendrite|neuron", Description, ignore.case = TRUE))
+
+kegg_junb_up_table <- setReadable(junb_kegg_up, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+KEGG_up_junb <- as.data.frame(kegg_junb_up_table)
+
+# select GO top 5 from 3 types 
+use_pathway <- group_by(GO_up_junb_filtered, ONTOLOGY) %>%
+  top_n(5, wt = -p.adjust) %>%
+  group_by(p.adjust) %>%
+  top_n(1, wt = Count) %>%
+  rbind(
+    top_n(KEGG_up_junb, 5, -p.adjust) %>%
+      group_by(p.adjust) %>%
+      top_n(1, wt = Count) %>%
+      mutate(ONTOLOGY = 'KEGG')
+  ) %>%
+  ungroup() %>%
+  mutate(ONTOLOGY = factor(ONTOLOGY, 
+                           levels = rev(c('BP', 'CC', 'MF', 'KEGG')))) %>%
+  dplyr::arrange(ONTOLOGY, p.adjust) %>%
+  mutate(Description = factor(Description, levels = Description)) %>%
+  tibble::rowid_to_column('index')
+
+width <- 0.5
+xaxis_max <- max(-log10(use_pathway$p.adjust)) + 1
+rect.data <- group_by(use_pathway, ONTOLOGY) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(
+    xmin = -3 * width,
+    xmax = -2 * width,
+    ymax = cumsum(n),
+    ymin = lag(ymax, default = 0) + 0.6,
+    ymax = ymax + 0.4
+  )
+
+
+# Plot 
+
+plot_enrichment <- function() {
+  
+  baseline <- data.frame(x = 0, y = 0, xend = xaxis_max, yend = 0)
+  
+  p <- use_pathway %>%
+    ggplot(aes(-log10(p.adjust), y = index, fill = ONTOLOGY)) +
+    geom_round_col(
+      aes(y = Description), width = 0.6, alpha = 0.8
+    ) +
+    geom_text(
+      aes(x = 0.05, label = Description),
+      hjust = 0, size = 5
+    ) +
+    geom_text(
+      aes(x = 0.1, label = geneID, colour = ONTOLOGY),
+      hjust = 0, vjust = 2.6, size = 3.5, fontface = 'italic',
+      show.legend = FALSE
+    ) +
+    
+    
+    geom_point(
+      aes(x = -width, size = Count),
+      shape = 21
+    ) +
+    geom_text(
+      aes(x = -width, label = Count)
+    ) +
+    scale_size_continuous(name = 'Count', range = c(5, 12)) +
+    
+    
+    geom_round_rect(
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
+          fill = ONTOLOGY),
+      data = rect.data,
+      radius = unit(2, 'mm'),
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_text(
+      aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2, label = ONTOLOGY),
+      data = rect.data,
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_segment(
+      data = baseline,
+      aes(x = x, y = y, xend = xend, yend = yend),
+      linewidth = 1.5,
+      inherit.aes = FALSE
+    ) +
+    
+    labs(y = NULL) +
+    scale_fill_manual(name = 'Category', values = pal) +
+    scale_colour_manual(values = pal) +
+    scale_x_continuous(
+      breaks = seq(0, xaxis_max, 2),
+      expand = expansion(c(0, 0))
+    ) +
+    theme_prism() +
+    theme(
+      axis.text.y = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.title = element_text()
+    )
+  
+  return(p)
+}
+
+enrichment_plot <- plot_enrichment()
+print(enrichment_plot)
+
+################################################################################
+# Transform GO KEGG results geneID to gene name
+go_junb_down_table <- setReadable(junb_go_down, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+GO_down_junb <- as.data.frame(go_junb_down_table)
+GO_down_junb_filtered <- GO_down_junb %>%
+  filter(!grepl("synapse|postsynapse|presynapse|neuronal|axon|dendrite|neuron", Description, ignore.case = TRUE))
+
+kegg_junb_down_table <- setReadable(junb_kegg_down, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+KEGG_down_junb <- as.data.frame(kegg_junb_down_table)
+
+# select GO top 5 from 3 types 
+use_pathway <- group_by(GO_down_junb_filtered, ONTOLOGY) %>%
+  top_n(5, wt = -p.adjust) %>%
+  group_by(p.adjust) %>%
+  top_n(1, wt = Count) %>%
+  rbind(
+    top_n(KEGG_down_junb, 5, -p.adjust) %>%
+      group_by(p.adjust) %>%
+      top_n(1, wt = Count) %>%
+      mutate(ONTOLOGY = 'KEGG')
+  ) %>%
+  ungroup() %>%
+  mutate(ONTOLOGY = factor(ONTOLOGY, 
+                           levels = rev(c('BP', 'CC', 'MF', 'KEGG')))) %>%
+  dplyr::arrange(ONTOLOGY, p.adjust) %>%
+  mutate(Description = factor(Description, levels = Description)) %>%
+  tibble::rowid_to_column('index')
+
+width <- 0.5
+xaxis_max <- max(-log10(use_pathway$p.adjust)) + 1
+rect.data <- group_by(use_pathway, ONTOLOGY) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(
+    xmin = -3 * width,
+    xmax = -2 * width,
+    ymax = cumsum(n),
+    ymin = lag(ymax, default = 0) + 0.6,
+    ymax = ymax + 0.4
+  )
+
+
+# Plot 
+plot_enrichment <- function() {
+  
+  baseline <- data.frame(x = 0, y = 0, xend = xaxis_max, yend = 0)
+  
+  p <- use_pathway %>%
+    ggplot(aes(-log10(p.adjust), y = index, fill = ONTOLOGY)) +
+    geom_round_col(
+      aes(y = Description), width = 0.6, alpha = 0.8
+    ) +
+    geom_text(
+      aes(x = 0.05, label = Description),
+      hjust = 0, size = 5
+    ) +
+    geom_text(
+      aes(x = 0.1, label = geneID, colour = ONTOLOGY),
+      hjust = 0, vjust = 2.6, size = 3.5, fontface = 'italic',
+      show.legend = FALSE
+    ) +
+    
+    
+    geom_point(
+      aes(x = -width, size = Count),
+      shape = 21
+    ) +
+    geom_text(
+      aes(x = -width, label = Count)
+    ) +
+    scale_size_continuous(name = 'Count', range = c(5, 12)) +
+    
+    
+    geom_round_rect(
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
+          fill = ONTOLOGY),
+      data = rect.data,
+      radius = unit(2, 'mm'),
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_text(
+      aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2, label = ONTOLOGY),
+      data = rect.data,
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_segment(
+      data = baseline,
+      aes(x = x, y = y, xend = xend, yend = yend),
+      linewidth = 1.5,
+      inherit.aes = FALSE
+    ) +
+    
+    labs(y = NULL) +
+    scale_fill_manual(name = 'Category', values = pal) +
+    scale_colour_manual(values = pal) +
+    scale_x_continuous(
+      breaks = seq(0, xaxis_max, 2),
+      expand = expansion(c(0, 0))
+    ) +
+    theme_prism() +
+    theme(
+      axis.text.y = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.title = element_text()
+    )
+  
+  return(p)
+}
+
+enrichment_plot <- plot_enrichment()
+print(enrichment_plot)
+
+################  kLF5 #####################################
+#read data  and transform the gene ID 
+klf5 <- read.csv("Pseudo_Klf5.csv")
+colnames(klf5)[1] <- "gene_symbol"
+
+klf5$ENTREZID <- mapIds(org.Mm.eg.db,
+                        keys = klf5$gene_symbol,
+                        keytype = "SYMBOL",
+                        column = "ENTREZID",
+                        multiVals = "first")
+
+klf5 <- klf5 %>% filter(!is.na(ENTREZID))
+
+deg_up <- klf5 %>% filter(log2FoldChange > 0 & padj < 0.05)
+deg_down <- klf5 %>% filter(log2FoldChange < 0 & padj < 0.05)
+
+genes_up <- deg_up$ENTREZID
+genes_down <- deg_down$ENTREZID
+background_genes <- klf5$ENTREZID
+
+
+# KEGG analysis
+
+klf5_kegg_up <- enricher(
+  gene = genes_up,
+  TERM2GENE = term2gene_df,
+  TERM2NAME = term2name_df,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  minGSSize = 5,
+  universe = background_genes,
+)
+
+klf5_kegg_down <- enricher(
+  gene = genes_down,
+  TERM2GENE = term2gene_df,
+  TERM2NAME = term2name_df,
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  universe = background_genes,
+)
+
+# GO all analysis 
+klf5_go_up <- enrichGO(gene = genes_up,
+                       OrgDb = org.Mm.eg.db,
+                       keyType = "ENTREZID",
+                       ont = "ALL",
+                       universe = background_genes,
+                       pAdjustMethod = "BH",
+                       qvalueCutoff = 0.05)
+
+
+klf5_go_down <- enrichGO(gene = genes_down,
+                         OrgDb = org.Mm.eg.db,
+                         keyType = "ENTREZID",
+                         ont = "ALL",
+                         universe = background_genes,
+                         pAdjustMethod = "BH",
+                         qvalueCutoff = 0.05)
+
+
+# visulization 
+devtools::install_github("dxsbiocc/gground")
+BiocManager::install("ggprism")
+library(gground)
+library(ggprism)
+library(tidyverse)
+library(org.Mm.eg.db)
+library(clusterProfiler)
+
+# color panel 
+pal <- c(
+  "KEGG"='#eaa052', 
+  "MF"='#b74147', 
+  "CC"='#90ad5b', 
+  "BP"='#23929c')
+
+
+# Transform GO KEGG results geneID to gene name
+go_klf5_up_table <- setReadable(klf5_go_up, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+GO_up_klf5 <- as.data.frame(go_klf5_up_table)
+GO_up_klf5_filtered <- GO_up_klf5 %>%
+  filter(!grepl("synapse|postsynapse|presynapse|neuronal|axon|dendrite|neuron", Description, ignore.case = TRUE))
+
+kegg_klf5_up_table <- setReadable(klf5_kegg_up, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+KEGG_up_klf5 <- as.data.frame(kegg_klf5_up_table)
+
+# select GO top 5 from 3 types 
+use_pathway <- group_by(GO_up_klf5_filtered, ONTOLOGY) %>%
+  top_n(5, wt = -p.adjust) %>%
+  group_by(p.adjust) %>%
+  top_n(1, wt = Count) %>%
+  rbind(
+    top_n(KEGG_up_klf5, 5, -p.adjust) %>%
+      group_by(p.adjust) %>%
+      top_n(1, wt = Count) %>%
+      mutate(ONTOLOGY = 'KEGG')
+  ) %>%
+  ungroup() %>%
+  mutate(ONTOLOGY = factor(ONTOLOGY, 
+                           levels = rev(c('BP', 'CC', 'MF', 'KEGG')))) %>%
+  dplyr::arrange(ONTOLOGY, p.adjust) %>%
+  mutate(Description = factor(Description, levels = Description)) %>%
+  tibble::rowid_to_column('index')
+
+width <- 0.5
+xaxis_max <- max(-log10(use_pathway$p.adjust)) + 1
+rect.data <- group_by(use_pathway, ONTOLOGY) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(
+    xmin = -3 * width,
+    xmax = -2 * width,
+    ymax = cumsum(n),
+    ymin = lag(ymax, default = 0) + 0.6,
+    ymax = ymax + 0.4
+  )
+
+
+# Plot 
+plot_enrichment <- function() {
+  
+  baseline <- data.frame(x = 0, y = 0, xend = xaxis_max, yend = 0)
+  
+  p <- use_pathway %>%
+    ggplot(aes(-log10(p.adjust), y = index, fill = ONTOLOGY)) +
+    geom_round_col(
+      aes(y = Description), width = 0.6, alpha = 0.8
+    ) +
+    geom_text(
+      aes(x = 0.05, label = Description),
+      hjust = 0, size = 5
+    ) +
+    geom_text(
+      aes(x = 0.1, label = geneID, colour = ONTOLOGY),
+      hjust = 0, vjust = 2.6, size = 3.5, fontface = 'italic',
+      show.legend = FALSE
+    ) +
+    
+    
+    geom_point(
+      aes(x = -width, size = Count),
+      shape = 21
+    ) +
+    geom_text(
+      aes(x = -width, label = Count)
+    ) +
+    scale_size_continuous(name = 'Count', range = c(5, 12)) +
+    
+    
+    geom_round_rect(
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
+          fill = ONTOLOGY),
+      data = rect.data,
+      radius = unit(2, 'mm'),
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_text(
+      aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2, label = ONTOLOGY),
+      data = rect.data,
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_segment(
+      data = baseline,
+      aes(x = x, y = y, xend = xend, yend = yend),
+      linewidth = 1.5,
+      inherit.aes = FALSE
+    ) +
+    
+    labs(y = NULL) +
+    scale_fill_manual(name = 'Category', values = pal) +
+    scale_colour_manual(values = pal) +
+    scale_x_continuous(
+      breaks = seq(0, xaxis_max, 2),
+      expand = expansion(c(0, 0))
+    ) +
+    theme_prism() +
+    theme(
+      axis.text.y = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.title = element_text()
+    )
+  
+  return(p)
+}
+
+enrichment_plot <- plot_enrichment()
+print(enrichment_plot)
+
+#Transform GO KEGG results geneID to gene name
+go_klf5_down_table <- setReadable(klf5_go_down, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+GO_down_klf5 <- as.data.frame(go_klf5_down_table)
+GO_down_klf5_filtered <- GO_down_klf5 %>%
+  filter(!grepl("synapse|postsynapse|presynapse|neuronal|axon|dendrite|neuron", Description, ignore.case = TRUE))
+
+kegg_klf5_down_table <- setReadable(klf5_kegg_down, OrgDb = org.Mm.eg.db, keyType = "ENTREZID")
+KEGG_down_klf5 <- as.data.frame(kegg_klf5_down_table)
+
+# select GO top 5 from 3 types 
+
+use_pathway <- group_by(GO_down_klf5_filtered, ONTOLOGY) %>%
+  top_n(5, wt = -p.adjust) %>%
+  group_by(p.adjust) %>%
+  top_n(1, wt = Count) %>%
+  rbind(
+    top_n(KEGG_down_klf5, 5, -p.adjust) %>%
+      group_by(p.adjust) %>%
+      top_n(1, wt = Count) %>%
+      mutate(ONTOLOGY = 'KEGG')
+  ) %>%
+  ungroup() %>%
+  mutate(ONTOLOGY = factor(ONTOLOGY, 
+                           levels = rev(c('BP', 'CC', 'MF', 'KEGG')))) %>%
+  dplyr::arrange(ONTOLOGY, p.adjust) %>%
+  mutate(Description = factor(Description, levels = Description)) %>%
+  tibble::rowid_to_column('index')
+
+width <- 0.5
+xaxis_max <- max(-log10(use_pathway$p.adjust)) + 1
+rect.data <- group_by(use_pathway, ONTOLOGY) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  mutate(
+    xmin = -3 * width,
+    xmax = -2 * width,
+    ymax = cumsum(n),
+    ymin = lag(ymax, default = 0) + 0.6,
+    ymax = ymax + 0.4
+  )
+
+
+# Plot 
+
+plot_enrichment <- function() {
+  
+  baseline <- data.frame(x = 0, y = 0, xend = xaxis_max, yend = 0)
+  
+  p <- use_pathway %>%
+    ggplot(aes(-log10(p.adjust), y = index, fill = ONTOLOGY)) +
+    geom_round_col(
+      aes(y = Description), width = 0.6, alpha = 0.8
+    ) +
+    geom_text(
+      aes(x = 0.05, label = Description),
+      hjust = 0, size = 5
+    ) +
+    geom_text(
+      aes(x = 0.1, label = geneID, colour = ONTOLOGY),
+      hjust = 0, vjust = 2.6, size = 3.5, fontface = 'italic',
+      show.legend = FALSE
+    ) +
+    
+    
+    geom_point(
+      aes(x = -width, size = Count),
+      shape = 21
+    ) +
+    geom_text(
+      aes(x = -width, label = Count)
+    ) +
+    scale_size_continuous(name = 'Count', range = c(5, 12)) +
+    
+    
+    geom_round_rect(
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
+          fill = ONTOLOGY),
+      data = rect.data,
+      radius = unit(2, 'mm'),
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_text(
+      aes(x = (xmin + xmax) / 2, y = (ymin + ymax) / 2, label = ONTOLOGY),
+      data = rect.data,
+      inherit.aes = FALSE
+    ) +
+    
+    
+    geom_segment(
+      data = baseline,
+      aes(x = x, y = y, xend = xend, yend = yend),
+      linewidth = 1.5,
+      inherit.aes = FALSE
+    ) +
+    
+    labs(y = NULL) +
+    scale_fill_manual(name = 'Category', values = pal) +
+    scale_colour_manual(values = pal) +
+    scale_x_continuous(
+      breaks = seq(0, xaxis_max, 2),
+      expand = expansion(c(0, 0))
+    ) +
+    theme_prism() +
+    theme(
+      axis.text.y = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks.y = element_blank(),
+      legend.title = element_text()
+    )
+  
+  return(p)
+}
+
+enrichment_plot <- plot_enrichment()
+print(enrichment_plot)
+###################################################################################################################
+> sessionInfo()
+R version 4.4.2 (2024-10-31)
+Platform: x86_64-pc-linux-gnu
+Running under: Ubuntu 24.04.1 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C               LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8    LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C             LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+time zone: Etc/UTC
+tzcode source: system (glibc)
+
+attached base packages:
+[1] grid      stats4    stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] org.Hs.eg.db_3.20.0    lubridate_1.9.4        forcats_1.0.0          purrr_1.0.4            readr_2.1.5           
+ [6] tidyr_1.3.1            tibble_3.2.1           tidyverse_2.0.0        ggprism_1.0.5          gground_1.0.0         
+[11] rlang_1.1.5            ggplot2_3.5.1          org.Mm.eg.db_3.20.0    AnnotationDbi_1.68.0   IRanges_2.40.1        
+[16] S4Vectors_0.44.0       Biobase_2.66.0         BiocGenerics_0.52.0    dplyr_1.1.4            KEGGREST_1.46.0       
+[21] clusterProfiler_4.14.6 stringr_1.5.1         
+
+loaded via a namespace (and not attached):
+  [1] RColorBrewer_1.1-3      rstudioapi_0.17.1       jsonlite_2.0.0          magrittr_2.0.3          ggtangle_0.0.6         
+  [6] farver_2.1.2            fs_1.6.5                zlibbioc_1.52.0         vctrs_0.6.5             memoise_2.0.1          
+ [11] ggtree_3.14.0           htmltools_0.5.8.1       usethis_3.1.0           curl_6.2.2              gridGraphics_0.5-1     
+ [16] htmlwidgets_1.6.4       desc_1.4.3              plyr_1.8.9              cachem_1.1.0            igraph_2.1.4           
+ [21] mime_0.13               lifecycle_1.0.4         pkgconfig_2.0.3         Matrix_1.7-3            R6_2.6.1               
+ [26] fastmap_1.2.0           gson_0.1.0              GenomeInfoDbData_1.2.13 shiny_1.10.0            digest_0.6.37          
+ [31] aplot_0.2.5             enrichplot_1.26.6       colorspace_2.1-1        patchwork_1.3.0         ps_1.9.0               
+ [36] pkgload_1.4.0           RSQLite_2.3.9           labeling_0.4.3          timechange_0.3.0        httr_1.4.7             
+ [41] polyclip_1.10-7         compiler_4.4.2          remotes_2.5.0           bit64_4.6.0-1           withr_3.0.2            
+ [46] BiocParallel_1.40.0     DBI_1.2.3               pkgbuild_1.4.7          ggforce_0.4.2           R.utils_2.13.0         
+ [51] MASS_7.3-65             sessioninfo_1.2.3       tools_4.4.2             ape_5.8-1               httpuv_1.6.15          
+ [56] R.oo_1.27.0             glue_1.8.0              callr_3.7.6             nlme_3.1-168            GOSemSim_2.32.0        
+ [61] promises_1.3.2          reshape2_1.4.4          fgsea_1.32.4            generics_0.1.3          gtable_0.3.6           
+ [66] tzdb_0.5.0              R.methodsS3_1.8.2       data.table_1.17.0       hms_1.1.3               XVector_0.46.0         
+ [71] ggrepel_0.9.6           pillar_1.10.1           yulab.utils_0.2.0       later_1.4.1             splines_4.4.2          
+ [76] tweenr_2.0.3            treeio_1.30.0           lattice_0.22-6          bit_4.6.0               tidyselect_1.2.1       
+ [81] GO.db_3.20.0            Biostrings_2.74.1       miniUI_0.1.1.1          devtools_2.4.5          stringi_1.8.7          
+ [86] UCSC.utils_1.2.0        lazyeval_0.2.2          ggfun_0.1.8             codetools_0.2-20        qvalue_2.38.0          
+ [91] BiocManager_1.30.25     ggplotify_0.1.2         cli_3.6.4               xtable_1.8-4            munsell_0.5.1          
+ [96] processx_3.8.6          Rcpp_1.0.14             GenomeInfoDb_1.42.3     png_0.1-8               parallel_4.4.2         
+[101] ellipsis_0.3.2          blob_1.2.4              profvis_0.4.0           DOSE_4.0.1              urlchecker_1.0.1       
+[106] tidytree_0.4.6          scales_1.3.0            crayon_1.5.3            cowplot_1.1.3           fastmatch_1.1-6 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
