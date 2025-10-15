@@ -1,0 +1,118 @@
+## ---------- 0) ----------
+suppressPackageStartupMessages({
+  library(Seurat); library(Matrix); library(dplyr); library(ggplot2); library(ggrepel)
+  library(future)
+})
+set.seed(1)
+
+## avoid future 500MiB limitation 
+plan("sequential")                            
+
+
+## ---------- 1)  ----------
+meta <- crispri@meta.data
+
+cells_ctrl <- rownames(meta)[ meta$gene %in% "Non-Targeting" |
+                                meta$mixscape_class %in% "Non-Targeting" ]
+ctrl <- subset(crispri, cells = cells_ctrl)
+
+ref <- mus_ctrl        
+qry <- ctrl         
+
+## ---------- 2) SCT ----------
+ref <- SCTransform(ref, method="glmGamPoi", return.only.var.genes=FALSE, verbose=FALSE)
+qry <- SCTransform(qry, method="glmGamPoi", return.only.var.genes=FALSE, verbose=FALSE)
+DefaultAssay(ref) <- "SCT"; DefaultAssay(qry) <- "SCT"
+
+## ---------- 3) ----------
+hv_ref <- VariableFeatures(ref); hv_qry <- VariableFeatures(qry)
+markers <- c("Aqp2","Scnn1g","Avpr2","Hsd11b2","Fxyd4","Krt8","Krt18","Aqp3","Aqp4")
+
+ref_dat <- GetAssayData(ref, assay="SCT", slot="data")
+qry_dat <- GetAssayData(qry, assay="SCT", slot="data")
+
+genes0 <- unique(c(union(hv_ref, hv_qry), markers))
+genes0 <- intersect(genes0, rownames(ref_dat))
+genes0 <- intersect(genes0, rownames(qry_dat))
+
+missing <- setdiff(markers, genes0)
+if (length(missing) > 0) message("Markers not present in SCT assay: ", paste(missing, collapse=", "))
+
+## 
+var_rows <- function(m) {
+  n <- ncol(m); mu <- Matrix::rowMeans(m); rss <- Matrix::rowSums(m^2)
+  pmax(rss / n - mu^2, 0)
+}
+v_ref <- var_rows(ref_dat[genes0,,drop=FALSE])
+v_qry <- var_rows(qry_dat[genes0,,drop=FALSE])
+
+genes_use <- genes0[(v_ref > 0) & (v_qry > 0)]
+message("Features used after filtering: ", length(genes_use))
+stopifnot(length(genes_use) >= 500)
+
+## ---------- 4)  ----------
+ref <- RunPCA(ref, assay="SCT", features=genes_use, npcs=50, verbose=FALSE)
+ref <- RunUMAP(ref, reduction="pca", dims=1:50, return.model=TRUE, verbose=FALSE)
+
+## ---------- 5)  ----------
+qry <- RunPCA(qry, assay="SCT", features=genes_use, npcs=50, verbose=FALSE)
+
+## ---------- 6)  ----------
+anchors <- FindTransferAnchors(
+  reference = ref, query = qry,
+  normalization.method = "SCT",
+  reference.reduction = "pca",
+  reduction = "rpca",
+  dims = 1:50,
+  features = genes_use,
+  k.anchor = 80, k.filter = NA,
+  verbose = FALSE
+)
+
+## ---------- 7)  ----------
+lab_col <- if ("sub_merge" %in% colnames(ref@meta.data)) "sub_merge" else "celltype"
+pred <- TransferData(anchorset=anchors, refdata=ref@meta.data[[lab_col]], dims=1:50, k.weight=150)
+qry[[paste0("pred_", lab_col)]] <- pred$predicted.id
+qry$prediction.score.max <- pred$prediction.score.max
+
+## ---------- 8)  ----------
+qry <- MapQuery(
+  anchorset = anchors,
+  reference = ref,
+  query = qry,
+  refdata = setNames(list(ref@meta.data[[lab_col]]), lab_col),
+  reference.reduction = "pca",
+  reduction.model = "umap",
+  verbose = FALSE
+)
+
+
+## ---------- 9)  ----------
+df_ref <- Embeddings(ref, "umap") |> as.data.frame()
+colnames(df_ref) <- c("UMAP_1","UMAP_2")
+df_ref$label <- ref@meta.data[rownames(df_ref), lab_col, drop=TRUE]
+
+centers_ref <- df_ref |>
+  group_by(label) |>
+  summarise(UMAP_1 = median(UMAP_1, na.rm=TRUE),
+            UMAP_2 = median(UMAP_2, na.rm=TRUE),
+            n = dplyr::n()) |>
+  filter(n >= 30) |>
+  ungroup()
+
+df_qry <- Embeddings(qry, "ref.umap") |> as.data.frame()
+colnames(df_qry) <- c("UMAP_1","UMAP_2")
+
+ggplot() +
+  geom_point(data = df_ref, aes(UMAP_1, UMAP_2),
+             color = "grey85", size = 0.35, alpha = 0.8) +
+  geom_text_repel(data = centers_ref,
+                  aes(UMAP_1, UMAP_2, label = label),
+                  size = 3.5, fontface = "bold", color = "black",
+                  box.padding = 0.2, point.padding = 0.2, max.overlaps = Inf) +
+  geom_point(data = df_qry, aes(UMAP_1, UMAP_2),
+             color = "#2C7BB6", size = 1.0, alpha = 0.95) +
+  labs(title = "Mouse reference clusters labeled; IMCD3 overlaid",
+       x = "UMAP_1", y = "UMAP_2") +
+  theme_bw(base_size = 12) +
+  theme(panel.grid = element_blank())
