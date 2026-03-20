@@ -251,7 +251,7 @@ rownames(counts_Yy1) <- NULL
 write.xlsx(counts_Yy1, file = "Normalized_Yy1_counts.xlsx")
 
 # prepare data for DESeq2
-colData <- data.frame(samples = colnames(counts_Klf5))
+colData <- data.frame(samples = colnames(counts_Yy1))
 condition <- c(rep("KD", 5), rep("Ctrl", 10))
 colData <- colData %>%
   mutate(condition = condition)
