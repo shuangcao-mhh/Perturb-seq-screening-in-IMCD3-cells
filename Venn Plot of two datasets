@@ -1,0 +1,171 @@
+pseudo <- Ilf2_pseudo_DEG
+rm(Ilf2_pseudo_DEG)
+combat <- X20240307_combatseq_DESeq2_DE_genes
+rm(X20240307_combatseq_DESeq2_DE_genes)
+rm(Pseudo)
+combat <- combat[, -1]
+pseudo <- Pseudo
+head(combat)
+colnames(combat)
+colnames(pseudo)
+colnames(pseudo)[1] <- "symbol"
+
+
+# install.packages(c("dplyr","VennDiagram"))
+
+library(dplyr)
+library(VennDiagram)
+
+# extract significant genes（padj < 0.05），and clean NA/repeat
+sig1 <- combat  %>% filter(!is.na(padj), padj < 0.05)  %>% pull(symbol) %>% unique() %>% na.omit()
+sig2 <- pseudo  %>% filter(!is.na(padj), padj < 0.05)  %>% pull(symbol) %>% unique() %>% na.omit()
+
+# basic quantification
+inter <- intersect(sig1, sig2)
+only1 <- setdiff(sig1, sig2)
+only2 <- setdiff(sig2, sig1)
+
+cat("combat sig_num：", length(sig1), "\n")
+cat("pseudo sig_num：", length(sig2), "\n")
+cat("overlap_num：", length(inter), "\n")
+
+# venn plot
+venn.plot <- venn.diagram(
+  x = list(combat = sig1, pseudo = sig2),
+  filename = NULL,  
+  fill = c("#A6CEE3","#B2DF8A"), alpha = 0.6,
+  cex = 1.4, cat.cex = 1.3, lwd = 1.5
+)
+grid::grid.newpage(); grid::grid.draw(venn.plot)
+
+
+
+gene_list <- list(
+  combat = sig1,
+  pseudo = sig2
+)
+
+# ggvenn creat image
+ggvenn(gene_list,
+       fill_color = c("#A6CEE3","#B2DF8A"),
+       stroke_size = 0.8,
+       set_name_size = 4,
+       text_size = 5)
+
+common_genes <- intersect(combat$symbol, pseudo$symbol)
+plot(combat$log2FoldChange[match(common_genes, combat$symbol)],
+     pseudo$log2FoldChange[match(common_genes, pseudo$symbol)],
+     xlab="combat log2FC", ylab="pseudo log2FC")
+abline(h=0,v=0,col="red")
+cor(combat$log2FoldChange[match(common_genes, combat$symbol)],
+    pseudo$log2FoldChange[match(common_genes, pseudo$symbol)], use="complete.obs")
+
+
+common <- intersect(
+  combat$symbol[combat$pvalue < 0.05],
+  pseudo$symbol[pseudo$pvalue < 0.05]
+)
+
+df_overlap <- data.frame(
+  gene = common,
+  fc_combat = combat$log2FoldChange[match(common, combat$symbol)],
+  fc_pseudo = pseudo$log2FoldChange[match(common, pseudo$symbol)]
+)
+table(sign(df_overlap$fc_combat) == sign(df_overlap$fc_pseudo))
+
+
+plot(df_overlap$fc_combat, df_overlap$fc_pseudo,
+     xlab="combat log2FC", ylab="pseudo log2FC",
+     pch=19, col=ifelse(sign(df_overlap$fc_combat)==sign(df_overlap$fc_pseudo),"blue","red"))
+abline(h=0, v=0, col="gray")
+
+
+plot(df_overlap$fc_combat, df_overlap$fc_pseudo,
+     xlab = "combat log2FC", ylab = "pseudo log2FC",
+     pch = 19, cex = 0.6,
+     col = ifelse(sign(df_overlap$fc_combat) == sign(df_overlap$fc_pseudo),
+                  "#A6CEE3","#B2DF8A"))
+abline(h = 0, v = 0, col = "gray")
+
+# 
+fit <- lm(fc_pseudo ~ fc_combat, data = df_overlap)
+abline(fit, col = "darkgreen", lwd = 2)
+
+# 
+abline(0, 1, col = "black", lty = 2)
+
+# Pearson correlation
+r <- cor(df_overlap$fc_combat, df_overlap$fc_pseudo, method = "pearson")
+text(x = min(df_overlap$fc_combat), 
+     y = max(df_overlap$fc_pseudo), 
+     labels = paste0("r = ", round(r, 3)), 
+     pos = 4, col = "darkgreen")
+
+sig_combat  <- combat$symbol[order(combat$padj)][1:200]
+sig_pseudo  <- pseudo$symbol[order(pseudo$padj)][1:200]
+common      <- intersect(sig_combat, sig_pseudo)
+length(common)
+gene_list <- list(
+  combat = sig_combat,
+  pseudo = sig_pseudo
+)
+library(ggvenn)
+ggvenn(gene_list, 
+       fill_color = c("#A6CEE3","#B2DF8A"),
+       stroke_size = 0.8, set_name_size = 4)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# overlap gene list
+common <- intersect(
+  combat$symbol[combat$padj < 0.05],
+  pseudo$symbol[pseudo$padj < 0.05]
+)
+
+# extract overlap genes'log2FC
+df_overlap <- data.frame(
+  gene = common,
+  fc_combat = combat$log2FoldChange[match(common, combat$symbol)],
+  fc_pseudo = pseudo$log2FoldChange[match(common, pseudo$symbol)]
+)
+
+# check direction
+df_overlap$direction <- ifelse(df_overlap$fc_combat > 0 & df_overlap$fc_pseudo > 0, "Up",
+                               ifelse(df_overlap$fc_combat < 0 & df_overlap$fc_pseudo < 0, "Down",
+                                      "Opposite"))
+
+# quanticiation
+table(df_overlap$direction)
+
+plot(df_overlap$fc_combat, df_overlap$fc_pseudo,
+     xlab = "bulk log2FC", ylab = "screen log2FC",
+     pch = 19, cex = 0.6,
+     col = ifelse(sign(df_overlap$fc_combat) == sign(df_overlap$fc_pseudo),
+                  "#A6CEE3","#B2DF8A"))
+abline(h = 0, v = 0, col = "gray")
+
+# 
+abline(0, 1, col = "black", lty = 2)
+
+# 
+fit <- lm(fc_pseudo ~ fc_combat, data = df_overlap)
+abline(fit, col = "darkgreen", lwd = 2)
+
+# Pearson correlation
+cor_res <- cor.test(df_overlap$fc_combat, df_overlap$fc_pseudo, method = "pearson")
+r <- cor_res$estimate
+p <- cor_res$p.value
+
+text(x = min(df_overlap$fc_combat), 
+     y = max(df_overlap$fc_pseudo), 
+     labels = paste0("Pearson r = ", round(r, 3), 
+                     ", p = ", signif(p, 3)), 
+     pos = 4, col = "darkgreen")
+
+# add legend
+legend("topleft",
+       legend = c("y = x (ideal)", "Fitted line (trend)",
+                  "Same direction", "Opposite direction"),
+       col = c("black", "darkgreen", "#A6CEE3","#B2DF8A"),
+       lty = c(2, 1, NA, NA),
+       pch = c(NA, NA, 19, 19),
+       lwd = c(1, 2, NA, NA),
+       bty = "n")
