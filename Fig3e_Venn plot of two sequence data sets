@@ -21,7 +21,6 @@ sig2 <- pseudo  %>% filter(!is.na(padj), pvalue < 0.05)  %>% pull(symbol) %>% un
 inter <- intersect(sig1, sig2)
 only1 <- setdiff(sig1, sig2)
 only2 <- setdiff(sig2, sig1)
-
 cat("combat sig_num：", length(sig1), "\n")
 cat("pseudo sig_num：", length(sig2), "\n")
 cat("overlap_num：", length(inter), "\n")
@@ -48,27 +47,22 @@ ggvenn(gene_list,
 
 # 7. Correlation of DE genes fold change between bulk and sc-screen
 common_genes <- intersect(combat$symbol, pseudo$symbol)
-
 plot(combat$log2FoldChange[match(common_genes, combat$symbol)],
      pseudo$log2FoldChange[match(common_genes, pseudo$symbol)],
      xlab="combat log2FC", ylab="pseudo log2FC")
 abline(h=0,v=0,col="red")
 cor(combat$log2FoldChange[match(common_genes, combat$symbol)],
     pseudo$log2FoldChange[match(common_genes, pseudo$symbol)], use="complete.obs")
-
-
 common <- intersect(
   combat$symbol[combat$pvalue < 0.05],
   pseudo$symbol[pseudo$pvalue < 0.05]
 )
-
 df_overlap <- data.frame(
   gene = common,
   fc_combat = combat$log2FoldChange[match(common, combat$symbol)],
   fc_pseudo = pseudo$log2FoldChange[match(common, pseudo$symbol)]
 )
 table(sign(df_overlap$fc_combat) == sign(df_overlap$fc_pseudo))
-
 plot(df_overlap$fc_combat, df_overlap$fc_pseudo,
      xlab = "combat log2FC", ylab = "pseudo log2FC",
      pch = 19, cex = 0.5,
@@ -83,12 +77,10 @@ abline(0, 1, col = "black", lty = 2) # Reference line (Ideal)
 
 # 9. Pearson correlation
 r <- cor(df_overlap$fc_combat, df_overlap$fc_pseudo, method = "pearson")
-
 text(x = min(df_overlap$fc_combat), 
      y = max(df_overlap$fc_pseudo), 
      labels = paste0("r = ", round(r, 3)), 
      pos = 4, col = "darkgreen")
-
 legend("topleft",
        legend = c("y = x (ideal)", "Fitted line (trend)",
                   "Same direction", "Opposite direction"),
