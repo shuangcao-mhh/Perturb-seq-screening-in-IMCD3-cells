@@ -57,4 +57,4 @@ We provide detailed QC reports for all analyzed datasets in the `/results/QC_plo
 ---
 
 ## 📧 Contact
-For questions regarding the code or data, please open an issue or contact: **[Shuang Cao]** ([cao.shuang@mh-hannover.de])
+For questions regarding the code or data, please open an issue or contact: **Shuang Cao** (cao.shuang@mh-hannover.de)
