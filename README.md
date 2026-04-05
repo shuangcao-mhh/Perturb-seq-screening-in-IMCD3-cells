@@ -1,4 +1,4 @@
-# Analysis of snRNA-seq Data for [Your Paper Title]
+# Analysis of snRNA-seq Data for Interleukin Enhancer Binding Factor 2 (Ilf2) and Kidney Epithelial Stress Resilience
 
 [![BioRxiv](https://img.shields.io/badge/bioRxiv-10.1101/2025.08.12.667599-red)](https://www.biorxiv.org/content/10.1101/2025.08.12.667599v3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
