@@ -3,7 +3,7 @@
 [![BioRxiv](https://img.shields.io/badge/bioRxiv-10.1101/2025.08.12.667599-red)](https://www.biorxiv.org/content/10.1101/2025.08.12.667599v3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This repository contains the complete computational pipeline for the snRNA-seq analysis presented in the manuscript. We have organized the scripts sequentially to ensure full reproducibility of our findings.
+This repository contains the complete computational pipeline for the bioinformatic analysis presented in the manuscript. We have organized the scripts sequentially to ensure full reproducibility of our findings.
 
 ---
 
