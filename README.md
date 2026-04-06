@@ -13,7 +13,7 @@ To reproduce the analysis, please follow the scripts in the numerical order pref
 
 | Step | Script Name | Description | Key Output |
 | :--- | :--- | :--- | :--- |
-| **01** | `01_mouse_kidney_snSeq_Preprocessing.R` | Data loading, MT-filtering. | Cleaned Seurat Object |
+| **01** | `01_mouse_kidney_snSeq_Preprocessing.R` | Data loading, MT-filtering, Clustering and cell-type annotation. | Cleaned Seurat Object |
 | **02** | `02_Integration_Normalization.R` | Batch effect correction and SCTransform. | Integrated Data |
 | **03** | `03_Clustering_UMAP.R` | **Generation of Figure 1a.** UMAP & Clustering. | `Fig1a_UMAP.pdf` |
 | **04** | `04_Cell_Annotation.R` | Marker gene identification and cluster naming. | Annotated Clusters |
