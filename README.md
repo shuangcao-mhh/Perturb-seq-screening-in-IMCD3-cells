@@ -6,6 +6,15 @@ All scripts are organized sequentially and grouped by analysis type to ensure cl
 
 ---
 
+## 🧠 Analysis Environment
+
+This pipeline uses a combination of **R and Python scripts**:
+
+- **R**: downstream analysis, visualization, Seurat, DESeq2
+- **Python**: preprocessing steps and specific data processing tasks
+
+Some Python-generated outputs are imported into R for downstream analyses.
+
 # 🔁 Analysis Workflow
 
 ## 🧬 snRNA-seq Analysis
