@@ -1,0 +1,136 @@
+library(ExperimentHub)
+library(DESeq2)
+library(tidyverse)
+library(openxlsx)
+view(seurat_object@meta.data)
+cell_plot <- DimPlot(seurat_object, reduction = 'umap', group.by = 'sgRNA')
+cond_plot <- DimPlot(seurat_object, reduction = 'umap', group.by = 'Crispr')
+cell_plot|cond_plot
+DefaultAssay(seurat_object)
+
+AggregateExpression
+
+cts <- AggregateExpression(sub_cluster, 
+                           group.by = c("sgRNA", "Crispr"),
+                           assays = 'RNA',
+                           slot = "data",
+                           return.seurat = FALSE)
+
+cts <- cts$RNA
+cts.t <- t(cts)
+cts.t[1:6, 1:6]
+cts.t <- as.data.frame(cts.t)
+splitRows <- gsub('_.*', '', rownames(cts.t))
+splitRows <- gsub('_Perturbed', '', rownames(cts.t))
+
+cts.split <- split.data.frame(cts.t,
+                              f = factor(splitRows))
+
+cts.split.modified <- lapply(cts.split, function(x){
+  rownames(x) <- gsub('.*_(.*)', '\\1', rownames(x))
+  t(x)
+  
+})
+
+# extract counts data (the same for the other targets) 
+counts_Yy1 <- as.data.frame(cbind(cts.split.modified$Yy1.g1, cts.split.modified$Yy1.g2, cts.split.modified$Yy1.g3, cts.split.modified$Yy1.g4,
+cts.split.modified$Yy1.g5, cts.split.modified$`Non-Targeting.g1_NT`, cts.split.modified$`Non-Targeting.g2_NT`,
+cts.split.modified$`Non-Targeting.g3_NT`, cts.split.modified$`Non-Targeting.g4_NT`, cts.split.modified$`Non-Targeting.g5_NT`,
+cts.split.modified$`Non-Targeting.g6_NT`, cts.split.modified$`Non-Targeting.g7_NT`, cts.split.modified$`Non-Targeting.g8_NT`,
+cts.split.modified$`Non-Targeting.g9_NT`, cts.split.modified$`Non-Targeting.g10_NT`))
+
+counts_Yy1$Gene <- rownames(counts_Yy1)
+rownames(counts_Yy1) <- NULL    
+write.xlsx(counts_Yy1, file = "Normalized_Yy1_counts.xlsx")
+
+# prepare data for DESeq2
+colData <- data.frame(samples = colnames(counts_Yy1))
+condition <- c(rep("KD", 5), rep("Ctrl", 10))
+colData <- colData %>%
+  mutate(condition = condition)
+
+dds <- DESeqDataSetFromMatrix(countData = counts_Yy1,
+                              colData = colData,
+                              design = ~ condition
+)
+
+class(counts_Yy1)
+summary(as.vector(counts_Yy1))
+
+# filter
+keep <- rowSums(counts(dds)) >=10
+dds <- dds[keep,]
+# run DESeq2
+dds <- DESeq(dds)
+
+# Check the coefficients for the comparison
+resultsNames(dds)
+
+# Generate results object
+res <- results(dds, name = "condition_KD_vs_Ctrl")
+res
+
+write.csv(res_df, file = "Pseudo_Yy1.csv", row.names = TRUE)
+
+# normalize expression according to size factor 
+write.csv(as.data.frame(counts(dds, normalized = TRUE)), file = "deseq2_normalized_counts_Yy1.csv")
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+> sessionInfo()
+R version 4.4.2 (2024-10-31)
+Platform: x86_64-pc-linux-gnu
+Running under: Ubuntu 24.04.1 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C               LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8    LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C             LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+time zone: Etc/UTC
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] sessioninfo_1.2.2  reshape2_1.4.4     dplyr_1.1.4        scales_1.3.0       patchwork_1.3.0    ggplot2_3.5.1     
+[7] SeuratObject_5.0.2 Seurat_4.3.0      
+
+loaded via a namespace (and not attached):
+  [1] RColorBrewer_1.1-3          rstudioapi_0.17.1           jsonlite_1.8.9              magrittr_2.0.3             
+  [5] spatstat.utils_3.1-1        farver_2.1.2                zlibbioc_1.52.0             vctrs_0.6.5                
+  [9] ROCR_1.0-11                 spatstat.explore_3.3-3      S4Arrays_1.6.0              htmltools_0.5.8.1          
+ [13] SparseArray_1.6.0           sctransform_0.4.1           parallelly_1.40.1           KernSmooth_2.23-24         
+ [17] htmlwidgets_1.6.4           ica_1.0-3                   plyr_1.8.9                  plotly_4.10.4              
+ [21] zoo_1.8-12                  igraph_2.1.2                mime_0.12                   lifecycle_1.0.4            
+ [25] pkgconfig_2.0.3             Matrix_1.7-1                R6_2.5.1                    fastmap_1.2.0              
+ [29] MatrixGenerics_1.18.0       GenomeInfoDbData_1.2.13     fitdistrplus_1.2-1          future_1.34.0              
+ [33] shiny_1.10.0                digest_0.6.37               colorspace_2.1-1            S4Vectors_0.44.0           
+ [37] ps_1.8.1                    DESeq2_1.46.0               tensor_1.5                  irlba_2.3.5.1              
+ [41] GenomicRanges_1.58.0        labeling_0.4.3              progressr_0.15.1            fansi_1.0.6                
+ [45] spatstat.sparse_3.1-0       httr_1.4.7                  polyclip_1.10-7             abind_1.4-8                
+ [49] compiler_4.4.2              remotes_2.5.0               withr_3.0.2                 BiocParallel_1.40.0        
+ [53] pkgbuild_1.4.5              R.utils_2.12.3              MASS_7.3-61                 DelayedArray_0.32.0        
+ [57] tools_4.4.2                 lmtest_0.9-40               httpuv_1.6.15               future.apply_1.11.3        
+ [61] goftest_1.2-3               R.oo_1.27.0                 glue_1.8.0                  callr_3.7.6                
+ [65] nlme_3.1-166                promises_1.3.2              grid_4.4.2                  Rtsne_0.17                 
+ [69] cluster_2.1.6               generics_0.1.3              gtable_0.3.6                spatstat.data_3.1-4        
+ [73] R.methodsS3_1.8.2           tidyr_1.3.1                 data.table_1.16.4           XVector_0.46.0             
+ [77] sp_2.1-4                    utf8_1.2.4                  BiocGenerics_0.52.0         spatstat.geom_3.3-4        
+ [81] RcppAnnoy_0.0.22            ggrepel_0.9.6               RANN_2.6.2                  pillar_1.9.0               
+ [85] stringr_1.5.1               spam_2.11-0                 later_1.4.1                 splines_4.4.2              
+ [89] lattice_0.22-6              survival_3.7-0              deldir_2.0-4                tidyselect_1.2.1           
+ [93] locfit_1.5-9.10             miniUI_0.1.1.1              pbapply_1.7-2               gridExtra_2.3              
+ [97] IRanges_2.40.0              SummarizedExperiment_1.36.0 scattermore_1.2             stats4_4.4.2               
+[101] Biobase_2.66.0              mixtools_2.0.0              matrixStats_1.4.1           UCSC.utils_1.2.0           
+[105] stringi_1.8.4               lazyeval_0.2.2              codetools_0.2-20            kernlab_0.9-33             
+[109] tibble_3.2.1                cli_3.6.3                   uwot_0.2.2                  xtable_1.8-4               
+[113] reticulate_1.40.0           segmented_2.1-3             munsell_0.5.1               processx_3.8.4             
+[117] GenomeInfoDb_1.42.1         Rcpp_1.0.13-1               globals_0.16.3              spatstat.random_3.3-2      
+[121] png_0.1-8                   spatstat.univar_3.1-1       parallel_4.4.2              dotCall64_1.2              
+[125] listenv_0.9.1               viridisLite_0.4.2           ggridges_0.5.6              crayon_1.5.3               
+[129] leiden_0.4.3.1              purrr_1.0.2                 rlang_1.1.4                 cowplot_1.1.3  
