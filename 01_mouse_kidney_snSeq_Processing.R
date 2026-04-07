@@ -169,18 +169,18 @@ my_levels <- c(
 Merge.combined$cell_type <- factor(Merge.combined$cell_type, levels = my_levels)
 Idents(Merge.combined) <- "cell_type"
 
-DotPlot(Merge.combined, features = c("Wt1", "Nphs2", # Podocytes
-                               "Cldn1","Ncam1",# PEC
-                               "Sord", "Cyp2e1", "Lrp2", # PT
-                               "Bst1", "Slc4a11","Sptssb", #Thin Limb
-                               "Slc12a1","Umod", # TAL
-                               "Slc12a3", "Calb1",# DCT & CNT
-                               "Aqp2", "Aqp3", "Fxyd4", # CCD
+DotPlot(Merge.combined, features = c("Wt1", "Nphs2",                      # Podocytes
+                               "Cldn1","Ncam1",                           # PEC
+                               "Sord", "Cyp2e1", "Lrp2",                  # PT
+                               "Bst1", "Slc4a11","Sptssb",                #Thin Limb
+                               "Slc12a1","Umod",                          # TAL
+                               "Slc12a3", "Calb1",                        # DCT & CNT
+                               "Aqp2", "Aqp3", "Fxyd4",                   # CCD
                                "Aqp4", "Bcat1", "Tspan6", "Plat","Nupr1", # MCD
-                               "Upk3a", # DME
-                               "Atp6v1g3", "Atp6v0d2", # CD-IC
-                               "Pecam1", "Flt1","Cdh5", # Endothelium
-                               "Pdgfrb", "Dcn","Fn1",# Interst. Cells
+                               "Upk3a",                                   # DME
+                               "Atp6v1g3", "Atp6v0d2",                    # CD-IC
+                               "Pecam1", "Flt1","Cdh5",                   # Endothelium
+                               "Pdgfrb", "Dcn","Fn1",                     # Interst. Cells
                                "H2-Ab1", "H2-Aa"), 
                                cols = c("white", "blue")) + RotatedAxis()
 
