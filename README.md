@@ -9,7 +9,7 @@ All scripts are organized sequentially and grouped by analysis type to ensure cl
 
 This pipeline integrates **multiple programming environments**:
 
-- **Bash**: alignment and preprocessing (e.g., STAR)
+- **Bash**: alignment and preprocessing (e.g., STAR, Cellranger)
 - **Python**: regulatory network inference and data processing (e.g., pySCENIC)
 - **R**: downstream analysis, visualization, and statistics (e.g., Seurat, DESeq2)
 
