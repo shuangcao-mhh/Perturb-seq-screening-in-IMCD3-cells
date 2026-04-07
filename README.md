@@ -7,7 +7,10 @@ All scripts are organized sequentially and grouped by analysis type to ensure cl
 ---
 
 # 📁 Repository Structure
-
+scripts/
+├── snRNA_seq/
+├── sc_CRISPR/
+├── bulk_RNAseq/
 ---
 
 # 🔁 Analysis Workflow
