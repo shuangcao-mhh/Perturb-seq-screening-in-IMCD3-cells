@@ -75,6 +75,35 @@ write.csv(res_df, file = "Pseudo_Yy1.csv", row.names = TRUE)
 # normalize expression according to size factor 
 write.csv(as.data.frame(counts(dds, normalized = TRUE)), file = "deseq2_normalized_counts_Yy1.csv")
 
+# PCA plot of each gRNA  (Grhl2 as an example, the others are the same way to process)
+# PCA plot with DESeq2's plotPCA function
+pcaData_grhl2<- plotPCA(vsd_grhl2, intgroup = "condition", returnData = TRUE)
+percentVar_grhl2 <- round(100 * attr(pcaData_grhl2, "percentVar"))
+
+# ggplot visualization
+plot_grhl2 <- ggplot(pcaData_grhl2, aes(x = PC1, y = PC2, color = condition, shape = condition)) +
+  geom_point(size = 3, alpha = 0.8) +
+  
+   stat_ellipse(type = "t", level = 0.95, size = 1, linetype = "solid", alpha = 0.3) +
+  
+  geom_hline(yintercept = 0, color = "gray40", linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "gray40", linetype = "dashed") +
+  
+  coord_fixed() +
+  
+  labs(
+    title = "Grhl2-KD vs Ctrl (PCA)",
+    x = paste0("PC1 (", percentVar_grhl2[1], "%)"),
+    y = paste0("PC2 (", percentVar_grhl2[2], "%)")
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "right"
+  )
+
+
 -------------------------------------------------------------------------------------------------------------------------------------------
 > sessionInfo()
 R version 4.4.2 (2024-10-31)
