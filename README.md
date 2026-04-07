@@ -8,14 +8,12 @@ All scripts are organized sequentially and grouped by analysis type to ensure cl
 
 # 🔁 Analysis Workflow
 
-Run scripts in numerical order.
-
 ## 🧬 snRNA-seq Analysis
 
 | Step | Script | Description | Output |
 |------|--------|------------|--------|
-| 01 | `01_snRNA_processing.R` | QC, filtering, clustering, annotation (Seurat) | Annotated Seurat object |
-| 02 | `02_snRNA_subcluster.R` | Sub-clustering (CD-PC, etc.) | Sub-clusters |
+| 01 | `01_snRNA_processing.R` | QC, filtering, clustering, annotation (Seurat) (**Fig S1**) | Annotated Seurat object |
+| 02 | `02_snRNA_subcluster.R` | Sub-clustering (CD-PC, etc.) (**Fig S1, Fig5b**) | Sub-clusters |
 | 03 | `03_map_IMCD3_to_reference.R` | Map IMCD3 cells to kidney reference (**Fig 1a**) | UMAP projection |
 | 04 | `04_SCENIC_analysis.R` | Regulon inference (SCENIC) (**Fig 1b**) | TF networks |
 | 05 | `05_MCD_expression.R` | Gene expression in MCD cells | Expression matrix |
@@ -65,6 +63,5 @@ Run scripts in numerical order.
   - sc-CRISPR → Step 06  
   - bulk RNA-seq → Step 11  
 
-- Scripts should be run sequentially.
 
 ---
