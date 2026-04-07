@@ -2,16 +2,18 @@
 
 This repository contains the complete computational workflow for snRNA-seq, sc-CRISPR screening, and bulk RNA-seq analyses.
 All scripts are organized sequentially and grouped by analysis type to ensure clarity and reproducibility.
+
 ---
 
-## 🧠 Analysis Environment
+# 🧠 Analysis Environment
 
 This pipeline uses a combination of **R and Python scripts**:
 
 - **R**: downstream analysis, visualization, Seurat, DESeq2
 - **Python**: preprocessing steps and specific data processing tasks
-
 Some Python-generated outputs are imported into R for downstream analyses.
+
+---
 
 # 🔁 Analysis Workflow
 
