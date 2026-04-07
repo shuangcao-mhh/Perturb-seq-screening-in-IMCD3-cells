@@ -60,7 +60,6 @@ Run scripts in numerical order.
 
 # ⚠️ Notes
 
-- **Figure 1a UMAP** → `03_map_IMCD3_to_reference.R`
 - QC and preprocessing are included in:
   - snRNA-seq → Step 01  
   - sc-CRISPR → Step 06  
