@@ -20,6 +20,7 @@ avg_exp <- AverageExpression(f_ctrl, group.by = "sub_merge", assays = "RNA")
 avg_matrix <- avg_exp$RNA
 mcd_avg <- avg_matrix[, "MCD"]
 head(mcd_avg)
+write.csv(mcd_avg, file="MCD_average_expression.csv")
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 > sessionInfo()
 R version 4.4.2 (2024-10-31)
