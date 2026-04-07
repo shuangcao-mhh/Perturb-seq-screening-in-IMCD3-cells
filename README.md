@@ -34,7 +34,7 @@ This pipeline integrates **multiple programming environments**:
 | Step | Script | Description | Output |
 |------|--------|------------|--------|
 | 06 | `06_scCRISPR_QC` | QC and gRNA recovery (**Fig 1c, 2a**) | QC metrics |
-| 07 | `07_scCRISPR_PCA_DEG` | PCA and Knockdown efficiency and DEGs | PCA_plot DEG tables |
+| 07 | `07_scCRISPR_PCA_DEG` | PCA, Knockdown efficiency and DEGs | PCA_plot DEG tables |
 | 08 | `08_scCRISPR_heatmap` | single-cell DEGs heatmap (**Fig 1f–g, 2b–c**) | sc-DEGs heatmap |
 | 09 | `09_scCRISPR_ILF2_enrichment` | GO/KEGG enrichment (**Fig 2d**) | Pathways |
 | 10 | `10_scCRISPR_ILF2_GSEA` | GSEA (**Fig 2e**) | Ranked pathways |
