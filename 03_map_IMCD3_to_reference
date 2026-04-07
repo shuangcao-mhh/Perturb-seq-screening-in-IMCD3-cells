@@ -16,7 +16,7 @@ cells_ctrl <- rownames(meta)[ meta$gene %in% "Non-Targeting" |
                                 meta$mixscape_class %in% "Non-Targeting" ]
 ctrl <- subset(crispri, cells = cells_ctrl)
 
-ref <- mus_ctrl        
+ref <- mus_ctrl # annotated seurat object         
 qry <- ctrl         
 
 ## ---------- 2) SCT ----------
@@ -116,6 +116,7 @@ ggplot() +
        x = "UMAP_1", y = "UMAP_2") +
   theme_bw(base_size = 12) +
   theme(panel.grid = element_blank())
+
 ##------------------ Session Info -------------------------------------
 > sessionInfo()
 R version 4.4.2 (2024-10-31)
