@@ -15,7 +15,11 @@ DimPlot(cd_pc, reduction = "umap", label = T) + NoLegend()
 FeaturePlot(cd_pc, features = "Ilf2", order = TRUE, 
             pt.size = 0.5, label = TRUE)
 
-sessionInfo()
+# average gene expression cross cells 
+avg_exp <- AverageExpression(f_ctrl, group.by = "sub_merge", assays = "RNA")
+avg_matrix <- avg_exp$RNA
+mcd_avg <- avg_matrix[, "MCD"]
+head(mcd_avg)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 > sessionInfo()
 R version 4.4.2 (2024-10-31)
