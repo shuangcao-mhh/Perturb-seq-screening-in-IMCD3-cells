@@ -7,11 +7,11 @@ All scripts are organized sequentially and grouped by analysis type to ensure cl
 
 # 🧠 Analysis Environment
 
-This pipeline uses a combination of **R and Python scripts**:
+This pipeline integrates **multiple programming environments**:
 
-- **R**: downstream analysis, visualization, Seurat, DESeq2
-- **Python**: preprocessing steps and specific data processing tasks
-Some Python-generated outputs are imported into R for downstream analyses.
+- **Bash**: alignment and preprocessing (e.g., STAR)
+- **Python**: regulatory network inference and data processing (e.g., pySCENIC)
+- **R**: downstream analysis, visualization, and statistics (e.g., Seurat, DESeq2)
 
 ---
 
