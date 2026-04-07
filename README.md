@@ -12,11 +12,11 @@ All scripts are organized sequentially and grouped by analysis type to ensure cl
 
 | Step | Script | Description | Output |
 |------|--------|------------|--------|
-| 01 | `01_snRNA_processing.R` | QC, filtering, clustering, annotation (Seurat) (**Fig S1**) | Annotated Seurat object |
-| 02 | `02_snRNA_subcluster.R` | Sub-clustering (CD-PC, etc.) (**Fig S1, Fig5b**) | Sub-clusters |
-| 03 | `03_map_IMCD3_to_reference.R` | Map IMCD3 cells to kidney reference (**Fig 1a**) | UMAP projection |
-| 04 | `04_SCENIC_analysis.R` | Regulon inference (SCENIC) (**Fig 1b**) | TF networks |
-| 05 | `05_MCD_expression.R` | Gene expression in MCD cells | Expression matrix |
+| 01 | `01_snRNA_processing` | QC, filtering, clustering, annotation (Seurat) | Annotated Seurat object |
+| 02 | `02_snRNA_subcluster` | Sub-clustering (CD-PC, etc.) (**Fig5b**) | Sub-clusters |
+| 03 | `03_map_IMCD3_to_reference` | Map IMCD3 cells to kidney reference (**Fig 1a**) | UMAP projection |
+| 04 | `04_SCENIC_analysis` | Regulon inference (SCENIC) (**Fig 1b, TF selection**) | TF networks |
+| 05 | `05_MCD_expression` | Gene expression in MCD cells (**Fig 1b, TF selection**) | Expression matrix |
 
 ---
 
@@ -24,11 +24,11 @@ All scripts are organized sequentially and grouped by analysis type to ensure cl
 
 | Step | Script | Description | Output |
 |------|--------|------------|--------|
-| 06 | `06_scCRISPR_QC.R` | QC and gRNA recovery (**Fig 1c, 2a**) | QC metrics |
-| 07 | `07_scCRISPR_DEG.R` | Knockdown efficiency and DEGs | DEG tables |
-| 08 | `08_scCRISPR_PCA_heatmap.R` | PCA and heatmap (**Fig 1f–g, 2b–c**) | PCA, heatmap |
-| 09 | `09_scCRISPR_ILF2_enrichment.R` | GO/KEGG enrichment (**Fig 2d**) | Pathways |
-| 10 | `10_scCRISPR_ILF2_GSEA.R` | GSEA (**Fig 2e**) | Ranked pathways |
+| 06 | `06_scCRISPR_QC` | QC and gRNA recovery (**Fig 1c, 2a**) | QC metrics |
+| 07 | `07_scCRISPR_DEG` | Knockdown efficiency and DEGs | DEG tables |
+| 08 | `08_scCRISPR_PCA_heatmap` | PCA and heatmap (**Fig 1f–g, 2b–c**) | PCA, heatmap |
+| 09 | `09_scCRISPR_ILF2_enrichment` | GO/KEGG enrichment (**Fig 2d**) | Pathways |
+| 10 | `10_scCRISPR_ILF2_GSEA` | GSEA (**Fig 2e**) | Ranked pathways |
 
 ---
 
@@ -36,12 +36,13 @@ All scripts are organized sequentially and grouped by analysis type to ensure cl
 
 | Step | Script | Description | Output |
 |------|--------|------------|--------|
-| 11 | `11_bulk_ILF2_DEG.R` | Alignment (STAR), TPM, DESeq2 (**Fig 3f–g**) | DEG results |
-| 12 | `12_bulk_vs_sc_comparison.R` | Compare bulk vs sc (**Fig 3d–e**) | Correlation |
-| 13 | `13_bulk_splicing.R` | Alternative splicing (SpliceWiz) (**Fig 3h–j**) | Splicing results |
-| 14 | `14_bulk_splicing_enrichment.R` | Splicing enrichment (**Fig 3k**) | Pathways |
-| 15 | `15_IRI_expression.R` | IRI gene expression (**Fig 5g, 5j**) | Expression |
-| 16 | `16_IRI_splicing.R` | IRI splicing (**Fig 5k, 5l**) | Splicing |
+| 11 | `11_bulk_IMCD3_expression` | Alignment (STAR), TPM (**Fig 1b, TF selection**) | DEG results |
+| 12 | `12_bulk_ILF2_DEG` | Alignment (STAR), TPM, DESeq2 (**Fig 3f–g**) | DEG results |
+| 13 | `13_bulk_vs_sc_comparison` | Compare bulk vs sc (**Fig 3d–e**) | Correlation |
+| 14 | `14_bulk_splicing` | Alternative splicing (SpliceWiz) (**Fig 3h–j**) | Splicing results |
+| 15 | `15_bulk_splicing_enrichment` | Splicing enrichment (**Fig 3k**) | Pathways |
+| 16 | `16_IRI_expression` | IRI gene expression (**Fig 5g, 5j**) | Expression |
+| 17 | `17_IRI_splicing` | IRI splicing (**Fig 5k, 5l**) | Splicing |
 
 ---
 
