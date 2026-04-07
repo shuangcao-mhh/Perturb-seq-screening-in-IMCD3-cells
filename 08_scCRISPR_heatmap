@@ -1,0 +1,154 @@
+#Normalization expression
+DefaultAssay(seurat_object)
+?NormalizeData
+seurat_object <- NormalizeData(seurat_object, normalization.method = "LogNormalize")
+plot1 <- FeatureScatter(seurat_object, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(seurat_object, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+
+seurat_object <- FindVariableFeatures(seurat_object, selection.method = "vst")
+all.genes <- rownames(seurat_object)
+seurat_object<- ScaleData(seurat_object)
+seurat_object <- RunPCA(seurat_object, features = VariableFeatures(object = seurat_object))
+
+print(seurat_object[["pca"]], dims = 1:5, nfeatures = 5)
+DimPlot(seurat_object, reduction = "pca")
+ElbowPlot(seurat_object)
+
+seurat_object <- FindNeighbors(seurat_object, dims = 1:20)
+?FindClusters
+seurat_object <- FindClusters(seurat_object, resolution = 0.5)
+head(Idents(seurat_object), 5)
+
+seurat_object <- RunUMAP(seurat_object, dims = 1:20)
+DimPlot(seurat_object, reduction = "umap", group.by = "Crispr")
+seurat_object <- RunTSNE(seurat_object)
+DimPlot(seurat_object, reduction = "tsne", group.by = "sgRNA")
+
+#exclude multi-protospacer cells and no-protospacer cells
+dim(seurat_object)
+sub_cluster <- subset(seurat_object, subset = Crispr %in% c("NT", "Perturbed"))
+dim(sub_cluster)
+
+# Calculate perturbation signature (PRTB).
+sub_cluster<- CalcPerturbSig(
+  object = sub_cluster, 
+  assay = "RNA", 
+  slot = 'data', 
+  gd.class ="gene", 
+  nt.cell.class = "Non-Targeting", 
+  reduction = "pca", 
+  ndims = 20, 
+  num.neighbors = 25, 
+  new.assay.name = "PRTB")
+
+
+# Normalize data, find variable features and center data.
+DefaultAssay(object = sub_cluster) <- 'PRTB'
+
+# Use variable features from RNA assay.
+VariableFeatures(object = sub_cluster) <- VariableFeatures(object = sub_cluster[["RNA"]])
+sub_cluster <- ScaleData(object = sub_cluster, do.scale = F, do.center = T)
+
+# Run PCA to reduce the dimensionality of the data.
+sub_cluster <- RunPCA(object = sub_cluster, reduction.key = 'prtbpca', reduction.name = 'prtbpca')
+
+# Run UMAP to visualize clustering in 2-D.
+sub_cluster <- RunUMAP(
+  object = sub_cluster, 
+  dims = 1:20, 
+  reduction = 'prtbpca', 
+  reduction.key = 'prtbumap', 
+  reduction.name = 'prtbumap')
+
+
+# Setup custom theme for plotting.
+custom_theme <- theme(
+  plot.title = element_text(size=16, hjust = 0.5), 
+  legend.key.size = unit(0.7, "cm"), 
+  legend.text = element_text(size = 14))
+
+p1 <- DimPlot(
+  object = sub_cluster, 
+  group.by = 'Crispr', 
+  pt.size = 0.2, 
+  reduction = "umap", 
+  split.by = "Crispr", 
+  ncol = 1, 
+  cols = c("grey39","goldenrod3")) + 
+  ggtitle("Perturbation Status") +
+  ylab("UMAP 2") +
+  xlab("UMAP 1") +
+  custom_theme
+p1
+
+
+# Run mixscape.
+sub_cluster <- RunMixscape(
+  sub_cluster,
+  assay = "PRTB",
+  slot = "scale.data",
+  labels = "gene",
+  nt.class.name = "Non-Targeting",
+  new.class.name = "mixscape_class",
+  min.de.genes = 3,
+  min.cells = 5,
+  de.assay = "RNA",
+  logfc.threshold = 0.25,
+  iter.num = 20,
+  verbose = TRUE,
+  split.by = NULL,
+  fine.mode = TRUE,
+  fine.mode.labels = "NT",
+  prtb.type = "KO"
+)
+
+
+# Calculate percentage of KD cells for all target gene classes.
+df <- prop.table(table(sub_cluster$mixscape_class.global, sub_cluster$NT),2)
+df
+df2 <- reshape2::melt(df)
+df2$Var2 <- as.character(df2$Var2)
+test <- df2[which(df2$Var1 == "KD"),]
+test <- test[order(test$value, decreasing = T),]
+new.levels <- test$Var2
+df2$Var2 <- factor(df2$Var2, levels = new.levels )
+df2$Var1 <- factor(df2$Var1, levels = c("Non-Targeting", "NP", "KD"))
+df2$gene <- sapply(as.character(df2$Var2), function(x) strsplit(x, split = "g")[[1]][1])
+df2$guide_number <- sapply(as.character(df2$Var2), 
+                           function(x) strsplit(x, split = "g")[[1]][2])
+df3 <- df2[-c(which(df2$gene == "NT")),]
+
+p1 <- ggplot(df3, aes(x = guide_number, y = value*100, fill= Var1)) +
+  geom_bar(stat= "identity") +
+  theme_classic()+
+  scale_fill_manual(values = c("grey49", "grey79","red4")) + 
+  ylab("% of cells") +
+  xlab("sgRNA")
+p1 + theme(axis.text.x = element_text(size = 12, hjust = 1), 
+           axis.text.y = element_text(size = 12), 
+           axis.title = element_text(size = 10), 
+           strip.text = element_text(size=12, face = "bold")) + 
+  facet_wrap(vars(gene),ncol = 5, scales = "free") +
+  labs(fill = "mixscape class") +theme(legend.title = element_text(size = 10),
+                                       legend.text = element_text(size = 8))
+
+
+Idents(object = sub_cluster) <- "mixscape_class"
+unique(sub_cluster@meta.data$mixscape_class)
+
+MixscapeHeatmap(object = sub_cluster, 
+                ident.1 = "Non-Targeting", 
+                ident.2 = "Ilf2 KO", 
+                logfc.threshold = 0.1,
+                test.use = "DESeq2",
+                balanced = TRUE, 
+                assay = "RNA", 
+                max.genes = 200, 
+                order.by.prob = TRUE,
+                mixscape.class =  "mixscape_class", 
+                max.cells.group =200, 
+                fc.name = "avg_log2FC",
+                pval.cutoff = 0.05,
+                angle = 0, 
+                size=6.5) + theme(axis.text.y = element_text(size = 16))
