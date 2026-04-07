@@ -184,31 +184,6 @@ DotPlot(Merge.combined, features = c("Wt1", "Nphs2",                      # Podo
                                "H2-Ab1", "H2-Aa"), 
                                cols = c("white", "blue")) + RotatedAxis()
 
-
-# Subset CD-PC  
-levels(Idents(Merge.combined))
-table(Idents(Merge.combined))
-
-Idents(Merge.combined) <- "cell_type"
-CDPC <- subset(Merge.combined, idents = 'CD-PC')
-CDPC <- FindNeighbors(CDPC, dims = 1:30,reduction = "pca",k.param = 20)
-CDPC <- FindClusters(CDPC, graph.name = "integrated_snn")
-
-DimPlot(CDPC, reduction = "umap", label = T, seed = (123))
-
-# Check the CD-PC sub-cluster markers 
-CDPC <- JoinLayers(CDPC)
-
-markers_cdpc <- FindAllMarkers(
-  CDPC,
-  only.pos = TRUE,
-  min.pct = 0.25,
-  logfc.threshold = 0.25
-)
-write.csv(markers_cdpc, "all_cdpc_clusters_markers.csv", row.names = FALSE)
-
-
-sessionInfo()
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 > sessionInfo()
 R version 4.4.2 (2024-10-31)
