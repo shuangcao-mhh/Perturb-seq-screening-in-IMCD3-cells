@@ -57,6 +57,7 @@ This pipeline integrates **multiple programming environments**:
 
 # 🧰 Key Tools Used
 
+- STAR
 - Seurat (snRNA-seq)
 - Seurat / Mixscape (CRISPRi single-cell) 
 - SCENIC (regulatory network)
