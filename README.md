@@ -1,9 +1,7 @@
 # 📊 Analysis Pipeline for ILF2 Kidney Study
 
 This repository contains the complete computational workflow for snRNA-seq, sc-CRISPR screening, and bulk RNA-seq analyses.
-
 All scripts are organized sequentially and grouped by analysis type to ensure clarity and reproducibility.
-
 ---
 
 ## 🧠 Analysis Environment
