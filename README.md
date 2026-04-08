@@ -32,7 +32,7 @@ This pipeline integrates **multiple programming environments**:
 ## 🧪 sc-CRISPR Screen
 
 | Step | Script | Description | Output |
-|------|--------|----------------|--------|
+|------|--------|---------------------------|--------|
 | 06 | `06_scCRISPR_QC` | QC and gRNA recovery (**Fig 1c, 2a**) | QC metrics |
 | 07 | `07_scCRISPR_PCA_DEG` | PCA, Knockdown efficiency and DEGs | PCA_plot DEG tables |
 | 08 | `08_scCRISPR_heatmap` | single-cell DEGs heatmap (**Fig 1f–g, 2b–c**) | sc-DEGs heatmap |
