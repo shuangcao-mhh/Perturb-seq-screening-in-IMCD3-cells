@@ -1,3 +1,6 @@
+----------------------------------------------------------------------------
+# Batch STAR alignment 
+----------------------------------------------------------------------------
 #!/bin/bash
 #SBATCH --job-name=star_align
 #SBATCH --output=star_log.txt
@@ -56,3 +59,51 @@ for R1 in *_1.fastq; do
 done
 
 echo "[INFO] All STAR jobs finished!"
+_______________________________________________________________________________________
+
+---------------------------------------------------------------------------------------
+# FeatureCounts scripts 
+---------------------------------------------------------------------------------------
+#!/bin/bash
+#SBATCH --job-name=featurecounts
+#SBATCH --output=featurecounts_log.txt
+#SBATCH --error=featurecounts_log.txt
+#SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=40G
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=your_email@.com
+
+# ====== Environment configuration ======
+source ~/.bashrc
+conda activate rna_seq
+
+# ====== Path definition ======
+WORKDIR="path to/STAR_alignment"
+BAM_DIR="$WORKDIR/data/star_out"
+OUTDIR="$WORKDIR/data/featurecounts_out"
+
+# GTF annotation file
+GTF="path to/annotation.gtf"
+
+mkdir -p "$OUTDIR"
+
+echo "[INFO] Starting featureCounts..."
+
+# ====== Collect all BAM files ======
+BAM_LIST=$(find "$BAM_DIR" -name "*Aligned.sortedByCoord.out.bam")
+
+# ====== Run featureCounts ======
+featureCounts \
+    -T 8 \
+    -p \
+    -t exon \
+    -g gene_id \
+    -a "$GTF" \
+    -o "$OUTDIR/gene_counts.txt" \
+    $BAM_LIST
+
+echo "[INFO] featureCounts finished!"
+——————————————————————————————————————————————————————————————————————————————————
+
+
