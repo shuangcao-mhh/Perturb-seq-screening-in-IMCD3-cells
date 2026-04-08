@@ -1,0 +1,58 @@
+#!/bin/bash
+#SBATCH --job-name=star_align
+#SBATCH --output=star_log.txt
+#SBATCH --error=star_log.txt
+#SBATCH --time=48:00:00        
+#SBATCH --cpus-per-task=8      
+#SBATCH --mem=50G              
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=your email@.com
+
+# ====== Environment configuration ======
+source ~/.bashrc
+conda activate rna_seq
+
+# ====== Path definition ======
+WORKDIR="path to/STAR_alignment"
+FASTQ_DIR="path to/fastq"
+
+# Note: This requires the STAR genome index.
+STAR_INDEX="path to/Emsembal_database/index_emsembal" 
+OUTDIR="$WORKDIR/data/star_out"
+
+mkdir -p "$OUTDIR"
+
+# ====== Batch run STAR ======
+echo "[INFO] Starting STAR alignment..."
+cd "$FASTQ_DIR"
+
+for R1 in *_1.fastq; do
+    SAMPLE=$(basename "$R1" _1.fastq)
+    R2="${SAMPLE}_2.fastq"
+
+    if [[ ! -f "$R2" ]]; then
+        echo "[WARNING] Paired file $R2 not found for $SAMPLE. Skipping..."
+        continue
+    fi
+
+    echo "[INFO] Aligning $SAMPLE..."
+    
+    # Create a dedicated output directory for this sample
+    mkdir -p "$OUTDIR/$SAMPLE"
+
+    STAR --runThreadN 8 \
+         --genomeDir "$STAR_INDEX" \
+         --readFilesIn "$R1" "$R2" \
+         --outFileNamePrefix "$OUTDIR/$SAMPLE/${SAMPLE}_" \
+         --outSAMtype BAM SortedByCoordinate \
+         --outSAMunmapped Within \
+         --limitBAMsortRAM 30000000000 \
+         --quantMode TranscriptomeSAM GeneCounts
+
+    # Create an index for BAM (required by SpliceWiz)
+    echo "[INFO] Indexing BAM for $SAMPLE..."
+    samtools index "$OUTDIR/$SAMPLE/${SAMPLE}_Aligned.sortedByCoord.out.bam"
+
+done
+
+echo "[INFO] All STAR jobs finished!"
