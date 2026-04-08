@@ -1,0 +1,57 @@
+---------------------------------------------------------------------------------------------------------
+# The Slurm scripts for bulk RNAseq pre-processing with STAR , and FeatureCount are the same as script_11
+---------------------------------------------------------------------------------------------------------
+all <- read.csv("./12samples_rawcounts_csv.csv", row.names = 1)
+filter <- apply(all, 1, function(x) length(x[x>5])>=2)
+all.filtered <- all[filter,]
+
+head(all.filtered)
+tail(all.filtered)
+x <- as.factor(rep(c("Ctrl", "KD"), each=6))
+set <- newSeqExpressionSet(as.matrix(all.filtered),
+                            phenoData = data.frame(x, row.names=colnames(all.filtered)))
+set
+colors <- brewer.pal(3, "Set2")
+plotRLE(set, outline=FALSE, ylim=c(-2, 2), col=colors[x])
+plotPCA(set, col=colors[x], cex=1)
+set1 <- betweenLaneNormalization(set1, which="upper")
+plotRLE(set1, outline=FALSE, ylim=c(-2, 2), col=colors[x])
+plotPCA(set1, col=colors[x], cex=1)
+
+library(sva)
+all <- as.matrix(all)
+batch_vector <- c("Batch1", "Batch1", "Batch1", "Batch2", "Batch2", "Batch2","Batch1", "Batch1", "Batch1", "Batch2", "Batch2", "Batch2")
+adjust_count <- ComBat_seq(counts = all, batch = batch_vector)
+filter <- apply(adjust_count, 1, function(x) length(x[x>5])>=2)
+filtered <- adjust_count[filter,]
+x <- as.factor(rep(c("Ctrl", "KD"), each=6))
+set <- newSeqExpressionSet(as.matrix(filtered),
+                           phenoData = data.frame(x, row.names=colnames(filtered)))
+set
+colors <- brewer.pal(3, "Set2")
+plotRLE(set, outline=FALSE, ylim=c(-2, 2), col=colors[x])
+plotPCA(set, col=colors[x], cex=1)
+set <- betweenLaneNormalization(set, which="upper")
+plotRLE(set, outline=FALSE, ylim=c(-2, 2), col=colors[x])
+plotPCA(set, col=colors[x], cex=1)
+
+
+
+meta.data <- read.table("./Ilf2_meta.txt")
+featurecounts.t <- t(adjust_count)
+
+condition <- factor(c("Ctrl", "Ctrl", "Ctrl", "Ctrl", "Ctrl", "Ctrl", "KD", "KD", "KD", "KD", "KD", "KD"))
+ColData <- data.frame(row.names =rownames(featurecounts.t), condition)
+
+ddsMat <- DESeqDataSetFromMatrix(countData = adjust_count,
+                                 colData = ColData,
+                                 design = ~condition)
+dds <- DESeq(ddsMat)
+results <- results(dds, pAdjustMethod = "fdr", alpha = 0.05)
+summary(results)
+result_data <- merge(as.data.frame(results),as.data.frame(counts(dds,normalized=TRUE)),by='row.names',sort=FALSE)
+names(result_data)[1] <- 'Gene'
+
+result_data$symbol <- mapIds(org.Mm.eg.db, keys = result_data$Gene, keytype = "ENSEMBL", column = "SYMBOL", multiVals = "first")
+
+write.csv(result_data, file = "combatseq.DESeq2.DE.genes.csv")
