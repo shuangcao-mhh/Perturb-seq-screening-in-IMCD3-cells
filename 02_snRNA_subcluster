@@ -19,3 +19,26 @@ markers_cdpc <- FindAllMarkers(
   logfc.threshold = 0.25
 )
 write.csv(markers_cdpc, "all_cdpc_clusters_markers.csv", row.names = FALSE)
+
+# Rename of the sub_clusters
+Idents(Merge.combined.CDPC2) <- "seurat_clusters"
+CDPC <- RenameIdents(CDPC, 
+                     `0` = "IMCD1", 
+                     `1` = "OMCD", 
+                     `2` = "CCD1", 
+                     `3` = "IMCD2", 
+                     `4` = "IMCD3", 
+                     `5` = "IMCD3", 
+                     `6` = "CCD2", 
+                     `7` = "DME",
+                     `8` = "DME", 
+                     `9` = "CNT", 
+                     `10` = "IMCD2")
+
+CDPC$sub_cluster <- as.character(Idents(CDPC))
+# Re-write the sub_CDPC to the orignal object 
+Merge.combined$annotation2 <- as.character(Merge.combined$annotation)
+Merge.combined$annotation2[colnames(CDPC)] <- CDPC$sub_cluster
+
+# Ilf2 expression in CDPC
+FeaturePlot(CDPC, features = "Ilf2", order = TRUE) 
