@@ -44,11 +44,11 @@ This pipeline integrates **multiple programming environments**:
 ## 🧬 Bulk RNA-seq
 
 | Step | Script | Description | Output |
-|------|--------|------------|--------|
+|------|--------|-------------|--------|
 | 11 | `11_bulk_IMCD3_expression` | Alignment (STAR), TPM (**Fig 1b, TF selection**) | Expression |
 | 12 | `12_bulk_ILF2_DEG` | Alignment (STAR), TPM, DESeq2 (**Fig 3f–g**) | DEG results |
 | 13 | `13_bulk_vs_sc_comparison` | Compare bulk vs sc (**Fig 3d–e**) | Correlation |
-| 14 | `14_bulk_splicing_enrichment` | RNA splicing and enrichment(SpliceWiz) (**Fig 3h–j, k**) | Splicing results Pathways |
+| 14 | `14_bulk_splicing_enrichment` | RNA splicing and enrichment(SpliceWiz) (**Fig 3h–k**) | Splicing results Pathways |
 | 15 | `15_IRI_expression` | Alignment (STAR), TPM (**Fig 5g, 5j**) | Expression |
 | 16 | `16_IRI_splicing` | Alternative splicing (SpliceWiz) (**Fig 5k, 5l**) | Splicing results |
 
