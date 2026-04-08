@@ -40,8 +40,20 @@ CDPC$sub_cluster <- as.character(Idents(CDPC))
 Merge.combined$annotation2 <- as.character(Merge.combined$annotation)
 Merge.combined$annotation2[colnames(CDPC)] <- CDPC$sub_cluster
 
+# Markers plot 
+DotPlot(Merge.combined, 
+        "Btc","Rnf186","Aqp3",
+        "Defb29",
+        "Fxyd4","Aqp2","Aqp4",
+        "Bcat1",
+        "Tspan6","Plat",
+        "Nupr1",
+        "Upk3a"), cols = c("white", "blue")) + RotatedAxis()
+
 # Ilf2 expression in CDPC
 FeaturePlot(CDPC, features = "Ilf2", order = TRUE) 
+
+
 --------------------------------------------------------------------------------------------------------------
 > sessionInfo()
 R version 4.4.2 (2024-10-31)
