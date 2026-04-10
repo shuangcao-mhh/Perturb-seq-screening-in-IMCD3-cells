@@ -115,6 +115,56 @@ splice_kegg <- enrichKEGG(
 
 write.csv(as.data.frame(splice_go), file = "IMCD3 Ilf2 KD DE splicing GO enrichment.csv")
 write.csv(as.data.frame(splice_kegg), file = "IMCD3 Ilf2 KD DE splicing KEGG enrichment.csv")
+
+# Heatmap of top spliced events
+mat <- makeMatrix(
+  se.filtered,
+  event_list = res_filtered$EventName[1:20],
+  method = "PSI"
+)
+
+library(pheatmap)
+anno_col_df <- as.data.frame(colData(se.filtered))
+anno_col_df <- anno_col_df[, 1, drop=FALSE]
+
+pheatmap(mat, annotation_col = anno_col_df)
+
+# Exon coverage plot (example here is Csnk1g3) 
+res_edgeR.filtered <- res_filtered[res_filtered$abs_deltaPSI > 0.05,]
+
+res_edgeR.filtered$EventName[9]
+which(grepl("Csnk1g3", res_edgeR.filtered$EventName))
+
+dataObj <- getCoverageData(se, Gene = "Csnk1g3", tracks = colnames(se))
+plotObj <- getPlotObject(dataObj, Event = res_edgeR.filtered$EventName[9])
+plotView(
+  plotObj,
+  centerByEvent = TRUE, 
+  trackList = list(1,2,3,4,5,6,7,8,9,10,11,12),
+  plotJunctions = TRUE
+)
+
+
+plotView(
+  plotObj,
+  centerByEvent = TRUE,
+  trackList = list(c(1,2,3,4,5,6), c(7,8,9,10,11,12)), 
+  normalizeCoverage = TRUE
+)
+
+plotObj_group <- getPlotObject(
+  dataObj,
+  Event = res_edgeR.filtered$EventName[9],
+  condition = "condition",
+  tracks = c("ctrl", "kd") 
+)
+
+plotView(
+  plotObj_group,
+  centerByEvent = TRUE,
+  trackList = list(c("ctrl", "kd"))
+)
+
 ------------------------------------------------------------------------------------------------------------
 #sessionInfo()
 R version 4.4.2 (2024-10-31)
