@@ -19,7 +19,7 @@ ctrl <- subset(crispri, cells = cells_ctrl)
 ref <- mus_ctrl # annotated seurat object         
 qry <- ctrl         
 
-## ---------- 2) SCT ----------
+## ---------- 2)  ----------
 ref <- SCTransform(ref, method="glmGamPoi", return.only.var.genes=FALSE, verbose=FALSE)
 qry <- SCTransform(qry, method="glmGamPoi", return.only.var.genes=FALSE, verbose=FALSE)
 DefaultAssay(ref) <- "SCT"; DefaultAssay(qry) <- "SCT"
