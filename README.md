@@ -69,9 +69,3 @@ This pipeline integrates **multiple programming environments**:
 ---
 
 # ⚠️ Notes
-
-- QC and preprocessing are included in:
-  - snRNA-seq → Step 01  
-  - sc-CRISPR → Step 06  
-
----
