@@ -33,6 +33,7 @@ cts.split.modified <- lapply(cts.split, function(x){
 })
 
 # extract counts data (the same for the other targets) 
+# Yy1
 counts_Yy1 <- as.data.frame(cbind(cts.split.modified$Yy1.g1, cts.split.modified$Yy1.g2, cts.split.modified$Yy1.g3, cts.split.modified$Yy1.g4,
 cts.split.modified$Yy1.g5, cts.split.modified$`Non-Targeting.g1_NT`, cts.split.modified$`Non-Targeting.g2_NT`,
 cts.split.modified$`Non-Targeting.g3_NT`, cts.split.modified$`Non-Targeting.g4_NT`, cts.split.modified$`Non-Targeting.g5_NT`,
